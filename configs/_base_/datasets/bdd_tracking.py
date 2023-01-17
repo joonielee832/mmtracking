@@ -14,7 +14,7 @@ train_pipeline = [
     dict(
         type='VideoCollect',
         keys=[
-            'img', 'gt_bboxes', 'gt_labels'
+            'img', 'gt_bboxes', 'gt_labels', 'gt_match_indices'
         ]),
     dict(type='SeqDefaultFormatBundle', ref_prefix='ref')
 ]
