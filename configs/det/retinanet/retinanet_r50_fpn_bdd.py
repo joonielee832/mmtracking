@@ -1,6 +1,6 @@
 _base_ = [
     '../../_base_/models/retinanet_r50_fpn.py',
-    '../../_base_/datasets/bdd_tracking.py', '../../_base_/default_runtime.py'
+    '../../_base_/datasets/bdd_tracking_det.py', '../../_base_/default_runtime.py'
 ]
 
 model = dict(
@@ -15,7 +15,7 @@ model = dict(
 
 #? Experiment details
 exp_dir = "retinanet_bdd_track_train_exp1"
-num_gpus = 2
+num_gpus = 1
 
 # optimizer
 optimizer = dict(type='SGD', lr=0.02*num_gpus/8, momentum=0.9, weight_decay=0.0001)
