@@ -1,4 +1,6 @@
 # model settings
+num_classes = 8
+
 model = dict(
     detector=dict(
         type='RetinaNet',
@@ -22,7 +24,7 @@ model = dict(
             num_outs=5),
         bbox_head=dict(
             type='RetinaHead',
-            num_classes=80,
+            num_classes=num_classes,
             in_channels=256,
             stacked_convs=4,
             feat_channels=256,
@@ -42,7 +44,7 @@ model = dict(
                 gamma=2.0,
                 alpha=0.25,
                 loss_weight=1.0),
-            loss_bbox=dict(type='L1Loss', loss_weight=1.0)),
+            loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
         # training and testing settings
         train_cfg=dict(
             assigner=dict(
@@ -60,3 +62,5 @@ model = dict(
             score_thr=0.05,
             nms=dict(type='nms', iou_threshold=0.5),
             max_per_img=100)))
+
+USE_MMDET=True

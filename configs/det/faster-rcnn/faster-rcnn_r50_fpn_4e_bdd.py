@@ -1,13 +1,13 @@
 USE_MMDET = True
 _base_ = [
-    '../_base_/models/faster_rcnn_r50_fpn.py',
-    '../_base_/datasets/mot_challenge_det.py', '../_base_/default_runtime.py'
+    '../../_base_/models/faster_rcnn_r50_fpn.py',
+    '../../_base_/datasets/bdd_tracking.py', '../../_base_/default_runtime.py'
 ]
 model = dict(
     detector=dict(
         rpn_head=dict(bbox_coder=dict(clip_border=False)),
         roi_head=dict(
-            bbox_head=dict(bbox_coder=dict(clip_border=False), num_classes=1)),
+            bbox_head=dict(bbox_coder=dict(clip_border=False), num_classes=8)),
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
@@ -22,3 +22,4 @@ lr_config = dict(
     step=[3])
 # runtime settings
 total_epochs = 4
+device = 'cuda'
