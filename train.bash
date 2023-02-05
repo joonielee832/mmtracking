@@ -2,10 +2,11 @@
 
 NUM_GPUS=$1
 # CONFIG=configs/det/retinanet/retinanet_r50_fpn_bdd.py
-CONFIG=configs/reid/resnet50_b32x8_bdd.py
+CONFIG=configs/mot/deepsort/deepsort_faster-rcnn_bdd.py
+# CONFIG=configs/reid/resnet50_b32x8_bdd.py
 # CONFIG=configs/det/faster-rcnn/faster-rcnn_r50_fpn_4e_bdd.py
 # CONFIG=configs/det/faster-rcnn/faster-rcnn_r50_fpn_4e_mot17.py
-OUTPUT=/home/results/resnet_bdd_reid_train_exp4
+OUTPUT=/home/results/deepsort_bdd_train_exp1
 
 [ -d $OUTPUT ] && rm -rf $OUTPUT
 

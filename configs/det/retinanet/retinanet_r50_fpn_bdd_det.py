@@ -1,24 +1,23 @@
 _base_ = [
     '../../_base_/models/retinanet_r50_fpn.py',
-    '../../_base_/datasets/bdd_tracking.py', '../../_base_/default_runtime.py'
+    '../../_base_/datasets/bdd_tracking_det.py', '../../_base_/default_runtime.py'
 ]
 
 USE_MMDET=True
 
-model = dict(
-    detector=dict(
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint=  # noqa: E251
-            '/home/misc/retinanet_r50_fpn_1x_det_bdd100k.pth'  # noqa: E501
-        )
-    )
-)
+# model = dict(
+#     detector=dict(
+#         init_cfg=dict(
+#             type='Pretrained',
+#             checkpoint=  # noqa: E251
+#             '/home/misc/retinanet_r50_fpn_1x_det_bdd100k.pth'  # noqa: E501
+#         )
+#     )
+# )
 
 #? Experiment details
 exp_dir = "retinanet_bdd_track_train_exp2"
 num_gpus = 4
-total_epochs = 4
 
 # optimizer
 optimizer = dict(type='SGD', lr=0.02*num_gpus/8, momentum=0.9, weight_decay=0.0001)
@@ -30,7 +29,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=1000,
     warmup_ratio=1.0 / 1000,
-    step=[3])
+    step=[8, 11])
 
 # yapf:disable
 log_config = dict(
@@ -42,6 +41,7 @@ log_config = dict(
 
 # runtime settings
 checkpoint_config = dict(interval=1)
+total_epochs = 1
 device = 'cuda' #* needed for training or else runs into error
 
-evaluation = dict(metric=['bbox', 'track'], interval=1, out_dir="/home/results/"+exp_dir)
+evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")

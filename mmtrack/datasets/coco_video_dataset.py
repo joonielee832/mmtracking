@@ -260,13 +260,15 @@ class CocoVideoDataset(CocoDataset):
             by pipeline.
         """
         img_info = self.data_infos[idx]
-        if self.ref_img_sampler is not None:
-            img_infos = self.ref_img_sampling(img_info, **self.ref_img_sampler)
-            results = [
-                self.prepare_results(img_info) for img_info in img_infos
-            ]
-        else:
-            results = self.prepare_results(img_info)
+        # if self.ref_img_sampler is not None:
+        #     img_infos = self.ref_img_sampling(img_info, **self.ref_img_sampler)
+        #     print(f"len of img_infos from ref sampling: {len(img_infos)}")
+        #     results = [
+        #         self.prepare_results(img_info) for img_info in img_infos
+        #     ]
+        # else:
+        #     results = self.prepare_results(img_info)
+        results = self.prepare_results(img_info)
         return self.pipeline(results)
 
     def prepare_train_img(self, idx):
@@ -397,9 +399,10 @@ class CocoVideoDataset(CocoDataset):
         else:
             raise TypeError('metric must be a list or a str.')
         allowed_metrics = ['bbox', 'segm', 'track']
-        for metric in metrics:
-            if metric not in allowed_metrics:
-                raise KeyError(f'metric {metric} is not supported.')
+        breakpoint()
+        for met in metrics:
+            if met not in allowed_metrics:
+                raise KeyError(f'metric {met} is not supported.')
 
         eval_results = dict()
         if 'track' in metrics:
