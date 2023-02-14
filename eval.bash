@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 NUM_GPUS=$1
-EXP_DIR=deepsort_bdd_eval_exp1
-CONFIG=configs/mot/deepsort/deepsort_retina_bdd.py
+EXP_DIR=deepsort_test_mot17
+# CONFIG=configs/mot/deepsort/deepsort_retina_bdd.py
+CONFIG=configs/mot/deepsort/deepsort_faster-rcnn_fpn_4e_mot17-private-half.py
 # OUTPUT=/home/results/resnet_bdd_reid_train_exp4
 #? Direct eval in test.py
 RESULTS_DIR=/home/results/$EXP_DIR

@@ -2,6 +2,14 @@ TRAIN_REID = True
 _base_ = [
     '../_base_/datasets/mot_challenge_reid.py', '../_base_/default_runtime.py'
 ]
+
+#? Experiment details
+exp_dir = "resnet_mot17_reid_train_exp1"
+num_gpus = 1
+total_epochs = 6    #* originally 6
+load_from = None
+batch_size = 1
+
 model = dict(
     reid=dict(
         type='BaseReID',
@@ -30,7 +38,7 @@ model = dict(
             'https://download.openmmlab.com/mmclassification/v0/resnet/resnet50_batch256_imagenet_20200708-cfb998bf.pth'  # noqa: E501
         )))
 # optimizer
-optimizer = dict(type='SGD', lr=0.1, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.1*num_gpus/8, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -38,5 +46,26 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=1000,
     warmup_ratio=1.0 / 1000,
-    step=[5])
-total_epochs = 6
+    step=[round(total_epochs*0.8)])
+
+log_config = dict(
+    interval=50,
+    hooks=[
+        dict(type='TextLoggerHook'),
+        dict(type='TensorboardLoggerHook',
+             log_dir="/home/results/"+exp_dir),
+        dict(type='WandbLoggerHook',
+            init_kwargs={'name': exp_dir,
+                        'project': 'resnet_reid_mot17',
+                         'dir': "/home/results/"+exp_dir+"/wandb",
+                         'sync_tensorboard': True,
+                        'config': {'lr': 0.1*num_gpus/8, 'batch_size':batch_size*num_gpus},
+                        'notes': '',
+                        'resume': 'allow',   # set to must if need to resume; set id corresponding to run
+                        # 'id': 'nnknkq8u'
+                        },
+            interval=50)
+    ]
+)
+
+device = 'cuda'
