@@ -36,12 +36,16 @@ class TripletLoss(nn.Module):
 
         batch_size = inputs.size(0)
 
-        # Compute Euclidean distance
-        dist = torch.pow(inputs, 2).sum(
-            dim=1, keepdim=True).expand(batch_size, batch_size)
-        dist = dist + dist.t()
-        dist.addmm_(inputs, inputs.t(), beta=1, alpha=-2)
-        dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
+        #!---------------------------------------------------------------------
+        # # Compute Euclidean distance
+        # dist = torch.pow(inputs, 2).sum(
+        #     dim=1, keepdim=True).expand(batch_size, batch_size)
+        # dist = dist + dist.t()
+        # dist.addmm_(inputs, inputs.t(), beta=1, alpha=-2)
+        # dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
+        #!---------------------------------------------------------------------
+        
+        dist = torch.cdist(inputs, inputs, p=2)
 
         # For each anchor, find the furthest positive sample
         # and nearest negative sample in the embedding space
