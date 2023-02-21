@@ -2,8 +2,8 @@
 
 NUM_GPUS=$1
 # CONFIG=configs/det/retinanet/retinanet_r50_fpn_mot17.py
-CONFIG=configs/reid/resnet50_b32x8_MOT17.py
-OUTPUT=/home/results/resnet_mot17_reid_train_exp1
+CONFIG=configs/reid/resnet50_prob_b32x8_MOT17.py
+OUTPUT=/home/results/resnet_prob_mot17_reid_train_exp1
 
 [ -d $OUTPUT ] && rm -rf $OUTPUT
 

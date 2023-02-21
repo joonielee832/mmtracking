@@ -4,7 +4,7 @@ _base_ = [
 ]
 
 #? Experiment details
-exp_dir = "resnet_mot17_reid_train_exp1"
+exp_dir = "resnet_prob_mot17_reid_train_exp1"
 num_gpus = 1
 total_epochs = 6    #* originally 6
 load_from = None
@@ -21,12 +21,14 @@ model = dict(
             style='pytorch'),
         neck=dict(type='GlobalAveragePooling', kernel_size=(8, 4), stride=1),
         head=dict(
-            type='LinearReIDHead',
+            type='ProbabilisticReIDHead',
             num_fcs=1,
             in_channels=2048,
             fc_channels=1024,
             out_channels=128,
             num_classes=380,
+            lce_sample_weight=0.1,
+            num_samples=10,
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
                 type='TripletLoss', margin=0.3, loss_weight=1.0),
@@ -48,24 +50,24 @@ lr_config = dict(
     warmup_ratio=1.0 / 1000,
     step=[round(total_epochs*0.8)])
 
-log_config = dict(
-    interval=50,
-    hooks=[
-        dict(type='TextLoggerHook'),
-        dict(type='TensorboardLoggerHook',
-             log_dir="/home/results/"+exp_dir),
-        dict(type='WandbLoggerHook',
-            init_kwargs={'name': exp_dir,
-                        'project': 'resnet_reid_mot17',
-                         'dir': "/home/results/"+exp_dir+"/wandb",
-                         'sync_tensorboard': True,
-                        'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
-                        'notes': '',
-                        'resume': 'allow',   # set to must if need to resume; set id corresponding to run
-                        # 'id': 'nnknkq8u'
-                        },
-            interval=50)
-    ]
-)
+# log_config = dict(
+#     interval=50,
+#     hooks=[
+#         dict(type='TextLoggerHook'),
+#         dict(type='TensorboardLoggerHook',
+#              log_dir="/home/results/"+exp_dir),
+#         dict(type='WandbLoggerHook',
+#             init_kwargs={'name': exp_dir,
+#                         'project': 'resnet_reid_mot17',
+#                          'dir': "/home/results/"+exp_dir+"/wandb",
+#                          'sync_tensorboard': True,
+#                         'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
+#                         'notes': '',
+#                         'resume': 'allow',   # set to must if need to resume; set id corresponding to run
+#                         # 'id': 'nnknkq8u'
+#                         },
+#             interval=50)
+#     ]
+# )
 
 device = 'cuda'
