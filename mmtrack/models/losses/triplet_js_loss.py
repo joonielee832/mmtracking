@@ -40,8 +40,6 @@ class TripletJSLoss(nn.Module):
 
         batch_size = feats.size(0)
 
-        #TODO: Implement pairwise Jensen-Shannon distance
-        # for i in range(batch_size):
         dist = torch.zeros((batch_size, batch_size), dtype=torch.float32, device=feats.device)
         
         for i in range(batch_size):
@@ -64,7 +62,7 @@ class TripletJSLoss(nn.Module):
         y = torch.ones_like(dist_an)
         return self.loss_weight * self.ranking_loss(dist_an, dist_ap, y)
     
-    def forward(self, feats, feats_cov, targets, **kwargs):
+    def forward(self, feats, targets, feats_cov, **kwargs):
         if self.hard_mining:
             return self.hard_mining_triplet_loss_forward(feats, feats_cov, targets)
         else:

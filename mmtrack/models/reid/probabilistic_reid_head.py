@@ -77,7 +77,6 @@ class ProbabilisticReIDHead(BaseHead):
         self.loss_cls = build_loss(loss) if loss else None
         self.loss_triplet = build_loss(
             loss_pairwise) if loss_pairwise else None
-        self.js_loss_triplet = True if loss_pairwise['type'] == 'TripletJSLoss' else False
         self.num_fcs = num_fcs
         self.in_channels = in_channels
         self.fc_channels = fc_channels
@@ -143,10 +142,7 @@ class ProbabilisticReIDHead(BaseHead):
         losses = dict()
 
         if self.loss_triplet:
-            if self.js_loss_triplet:
-                losses['triplet_loss'] = self.loss_triplet(feats, feats_cov, gt_label)
-            else:
-                losses['triplet_loss'] = self.loss_triplet(feats, gt_label)
+            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, cov=feats_cov)
 
         if self.loss_cls:
             assert cls_score is not None
