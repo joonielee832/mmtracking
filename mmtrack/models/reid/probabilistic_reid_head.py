@@ -77,7 +77,7 @@ class ProbabilisticReIDHead(BaseHead):
         self.loss_cls = build_loss(loss) if loss else None
         self.loss_triplet = build_loss(
             loss_pairwise) if loss_pairwise else None
-
+        self.js_loss_triplet = True if loss_pairwise['type'] == 'TripletJSLoss' else False
         self.num_fcs = num_fcs
         self.in_channels = in_channels
         self.fc_channels = fc_channels
@@ -125,25 +125,28 @@ class ProbabilisticReIDHead(BaseHead):
             cls_score = self.classifier(feats_bn)
             
             #? Run classifier on a number of samples
-            feats_cov = torch.unsqueeze(torch.exp(feats_logcov), 1)
+            feats_cov = torch.exp(feats_logcov)
             feat_dim = feats_cov.shape[-1]
             univ_norm_dists = torch.distributions.MultivariateNormal(torch.zeros(feat_dim), torch.eye(feat_dim))
             standard_norm = (univ_norm_dists.rsample((feats.shape[0]*self.num_samples,)).reshape(
                                 feats.shape[0], self.num_samples, feat_dim)).to(feats_cov.device)
-            feat_samples = torch.unsqueeze(feats, 1) + torch.mul(standard_norm, feats_cov)
+            feat_samples = torch.unsqueeze(feats, 1) + torch.mul(standard_norm, torch.unsqueeze(feats_cov, 1))
             
             cls_sample_score = self.classifier(self.bn(feat_samples.reshape(-1, feat_dim)))
             
-            return (feats, feats_logcov, cls_score, cls_sample_score)
-        return (feats, feats_logcov)
+            return (feats, feats_cov, cls_score, cls_sample_score)
+        return (feats, feats_cov)
 
-    @force_fp32(apply_to=('feats', 'feats_logcov', 'cls_score', 'cls_sample_score'))
-    def loss(self, gt_label, feats, feats_logcov, cls_score=None, cls_sample_score=None):
+    @force_fp32(apply_to=('feats', 'feats_cov', 'cls_score', 'cls_sample_score'))
+    def loss(self, gt_label, feats, feats_cov, cls_score=None, cls_sample_score=None):
         """Compute losses."""
         losses = dict()
 
         if self.loss_triplet:
-            losses['triplet_loss'] = self.loss_triplet(feats, gt_label)
+            if self.js_loss_triplet:
+                losses['triplet_loss'] = self.loss_triplet(feats, feats_cov, gt_label)
+            else:
+                losses['triplet_loss'] = self.loss_triplet(feats, gt_label)
 
         if self.loss_cls:
             assert cls_score is not None
