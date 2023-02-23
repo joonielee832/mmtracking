@@ -28,5 +28,6 @@ class FeatureUncertaintyLoss(nn.Module):
         feature_dim = covariance_matrix.shape[-1]
         total_entropy = (feature_dim/2 * (1 + torch.log(2 * torch.tensor(np.pi))) 
                 + torch.sum(covariance_matrix, dim=-1) / 2).sum()
-        loss = max(torch.tensor(0.0), self.entropy_margin - total_entropy)
+        loss = torch.max(torch.tensor(0.0), 
+                    self.entropy_margin - total_entropy)
         return loss * self.loss_weight
