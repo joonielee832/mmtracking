@@ -53,6 +53,7 @@ class ProbabilisticReIDHead(BaseHead):
                  num_classes=None,
                  loss=None,
                  loss_pairwise=None,
+                 loss_uncertainty=None,
                  topk=(1, ),
                  init_cfg=dict(
                      type='Normal', layer='Linear', mean=0, std=0.01, bias=0)):
@@ -77,6 +78,7 @@ class ProbabilisticReIDHead(BaseHead):
         self.loss_cls = build_loss(loss) if loss else None
         self.loss_triplet = build_loss(
             loss_pairwise) if loss_pairwise else None
+        self.loss_uncertainty = build_loss(loss_uncertainty) if loss_uncertainty else None
         self.num_fcs = num_fcs
         self.in_channels = in_channels
         self.fc_channels = fc_channels
@@ -133,11 +135,11 @@ class ProbabilisticReIDHead(BaseHead):
             
             cls_sample_score = self.classifier(self.bn(feat_samples.reshape(-1, feat_dim)))
             
-            return (feats, feats_cov, cls_score, cls_sample_score)
-        return (feats, feats_cov)
+            return (feats, feats_logcov, feats_cov, cls_score, cls_sample_score)
+        return (feats, feats_logcov, feats_cov)
 
-    @force_fp32(apply_to=('feats', 'feats_cov', 'cls_score', 'cls_sample_score'))
-    def loss(self, gt_label, feats, feats_cov, cls_score=None, cls_sample_score=None):
+    @force_fp32(apply_to=('feats', 'feats_logcov', 'feats_cov', 'cls_score', 'cls_sample_score'))
+    def loss(self, gt_label, feats, feats_logcov, feats_cov, cls_score=None, cls_sample_score=None):
         """Compute losses."""
         losses = dict()
 
@@ -147,12 +149,15 @@ class ProbabilisticReIDHead(BaseHead):
         if self.loss_cls:
             assert cls_score is not None
             assert cls_sample_score is not None
+            assert self.loss_uncertainty is not None, 'Uncertainty loss must be specified for classification'
 
             ce_loss = self.loss_cls(cls_score, gt_label)
             gt_label_repeat = torch.repeat_interleave(gt_label, self.num_samples)
             ce_loss_sample = self.loss_cls(cls_sample_score, gt_label_repeat)
             
             losses['ce_loss'] = (1 - self.lce_sample_weight) * ce_loss + self.lce_sample_weight * ce_loss_sample
+            losses['uncertainty_loss'] = self.loss_uncertainty(feats_logcov)
+            
             # compute accuracy
             acc = self.accuracy(cls_score, gt_label)
             assert len(acc) == len(self.topk)

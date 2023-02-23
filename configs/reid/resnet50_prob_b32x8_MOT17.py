@@ -1,7 +1,8 @@
-TRAIN_REID = True
 _base_ = [
     '../_base_/datasets/mot_challenge_reid.py', '../_base_/default_runtime.py'
 ]
+
+TRAIN_REID = True
 
 #? Experiment details
 exp_dir = "resnet_prob_mot17_reid_train_exp1"
@@ -27,11 +28,13 @@ model = dict(
             fc_channels=1024,
             out_channels=128,
             num_classes=380,
-            lce_sample_weight=0.1,
-            num_samples=10,
+            lce_sample_weight=0.1,  #* weight for cross entropy sample loss; configurable
+            num_samples=10,         #* num samples for cross entropy; configurable
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
-                type='TripletLoss', margin=0.3, loss_weight=1.0),
+                type='TripletLoss', margin=0.3, loss_weight=1.0, num_samples=100),  #* num_samples configurable
+            loss_uncertainty=dict(
+                type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
             act_cfg=dict(type='ReLU')),
         init_cfg=dict(
