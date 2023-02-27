@@ -144,7 +144,7 @@ class ProbabilisticReIDHead(BaseHead):
         losses = dict()
 
         if self.loss_triplet:
-            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, cov=feats_cov)
+            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, feats_cov=feats_cov)
 
         if self.loss_cls:
             assert cls_score is not None
