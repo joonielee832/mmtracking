@@ -1,14 +1,15 @@
 _base_ = [
-    '../_base_/datasets/mot_challenge_reid.py', '../_base_/default_runtime.py'
+    '../../_base_/datasets/mot_challenge_reid.py', '../../_base_/default_runtime.py'
 ]
 
 TRAIN_REID = True
 
 #? Experiment details
-exp_dir = "resnet_prob_mot17_reid_train_exp1"
-num_gpus = 1
+exp_dir = "prob_reid_mot17_train_exp1"
+num_gpus = 2
 total_epochs = 6    #* originally 6
 load_from = None
+resume_from = None
 batch_size = 1
 
 model = dict(
@@ -40,7 +41,7 @@ model = dict(
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
-            'https://download.openmmlab.com/mmclassification/v0/resnet/resnet50_batch256_imagenet_20200708-cfb998bf.pth'  # noqa: E501
+            '/home/misc/tracktor_reid_r50_iter25245-a452f51f.pth'  # noqa: E501
         )))
 # optimizer
 optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/1, momentum=0.9, weight_decay=0.0001)
@@ -53,24 +54,26 @@ lr_config = dict(
     warmup_ratio=1.0 / 1000,
     step=[round(total_epochs*0.8)])
 
-# log_config = dict(
-#     interval=50,
-#     hooks=[
-#         dict(type='TextLoggerHook'),
-#         dict(type='TensorboardLoggerHook',
-#              log_dir="/home/results/"+exp_dir),
-#         dict(type='WandbLoggerHook',
-#             init_kwargs={'name': exp_dir,
-#                         'project': 'resnet_reid_mot17',
-#                          'dir': "/home/results/"+exp_dir+"/wandb",
-#                          'sync_tensorboard': True,
-#                         'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
-#                         'notes': '',
-#                         'resume': 'allow',   # set to must if need to resume; set id corresponding to run
-#                         # 'id': 'nnknkq8u'
-#                         },
-#             interval=50)
-#     ]
-# )
+log_config = dict(
+    interval=50,
+    hooks=[
+        dict(type='TextLoggerHook'),
+        dict(type='TensorboardLoggerHook',
+             log_dir="/home/results/"+exp_dir+"/tf_board",
+             interval=50),
+        # dict(type='WandbLoggerHook',
+        #     init_kwargs={'name': exp_dir,
+        #                 'project': 'resnet_prob_reid_mot17',
+        #                  'dir': "/home/results/"+exp_dir,
+        #                  'sync_tensorboard': True,
+        #                 'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
+        #                 'notes': '',
+        #                 'resume': 'allow',   # set to must if need to resume; set id corresponding to run
+        #                 'mode': 'offline',
+        #                 'id': 'sv56jwmw'
+        #                 },
+        #     interval=50)
+    ]
+)
 
 device = 'cuda'
