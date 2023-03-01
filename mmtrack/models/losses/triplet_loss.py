@@ -18,23 +18,24 @@ class TripletLoss(nn.Module):
         loss_weight (float, optional): Weight of the loss. Default to 1.0.
     """
 
-    def __init__(self, margin=0.3, loss_weight=1.0, hard_mining=True, **kwargs):
+    def __init__(self, margin=0.3, loss_weight=1.0, prob=False, hard_mining=True, **kwargs):
         super(TripletLoss, self).__init__()
         self.margin = margin
         self.ranking_loss = nn.MarginRankingLoss(margin=margin)
         self.loss_weight = loss_weight
+        self.prob = prob
         self.hard_mining = hard_mining
 
-    def hard_mining_triplet_loss_forward(self, inputs, targets):
+    def hard_mining_triplet_loss_forward(self, feats, feats_cov, targets):
         """
         Args:
-            inputs (torch.Tensor): feature matrix with shape
+            feats (torch.Tensor): feature matrix with shape
                 (batch_size, feat_dim).
             targets (torch.LongTensor): ground truth labels with shape
                 (num_classes).
         """
 
-        batch_size = inputs.size(0)
+        batch_size = feats.size(0)
 
         #!---------------------------------------------------------------------
         # # Compute Euclidean distance
@@ -44,8 +45,12 @@ class TripletLoss(nn.Module):
         # dist.addmm_(inputs, inputs.t(), beta=1, alpha=-2)
         # dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
         #!---------------------------------------------------------------------
-        
-        dist = torch.cdist(inputs, inputs, p=2)
+        if self.prob:
+            dist_feat = torch.cdist(feats, feats, p=2)
+            dist_cov = torch.cdist(feats_cov, feats_cov, p=2)
+            dist = dist_feat + dist_cov
+        else:
+            dist = torch.cdist(feats, feats, p=2)
 
         # For each anchor, find the furthest positive sample
         # and nearest negative sample in the embedding space
@@ -62,8 +67,8 @@ class TripletLoss(nn.Module):
         y = torch.ones_like(dist_an)
         return self.loss_weight * self.ranking_loss(dist_an, dist_ap, y)
 
-    def forward(self, inputs, targets, **kwargs):
+    def forward(self, feats, targets, feats_cov, **kwargs):
         if self.hard_mining:
-            return self.hard_mining_triplet_loss_forward(inputs, targets)
+            return self.hard_mining_triplet_loss_forward(feats, feats_cov, targets)
         else:
             raise NotImplementedError()

@@ -19,7 +19,7 @@ class TripletJSLoss(nn.Module):
         loss_weight (float, optional): Weight of the loss. Default to 1.0.
     """
 
-    def __init__(self, margin=0.3, loss_weight=1.0, num_samples=10**2, hard_mining=True):
+    def __init__(self, margin=0.3, loss_weight=1.0, num_samples=10**2, hard_mining=True, **kwargs):
         super(TripletJSLoss, self).__init__()
         self.margin = margin
         self.ranking_loss = nn.MarginRankingLoss(margin=margin)

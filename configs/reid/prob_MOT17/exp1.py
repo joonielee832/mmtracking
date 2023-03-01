@@ -33,7 +33,7 @@ model = dict(
             num_samples=10,         #* num samples for cross entropy; configurable
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
-                type='TripletLoss', margin=0.3, loss_weight=1.0, num_samples=100),  #* num_samples configurable
+                type='TripletLoss', margin=0.3, loss_weight=1.0, prob=False, num_samples=100),  #* prob, num_samples configurable
             loss_uncertainty=dict(
                 type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
