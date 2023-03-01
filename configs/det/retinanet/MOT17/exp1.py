@@ -1,7 +1,7 @@
 USE_MMDET = True
 _base_ = [
-    '../../_base_/models/retinanet_r50_fpn.py',
-    '../../_base_/datasets/mot_challenge_det.py', '../../_base_/default_runtime.py'
+    '../../../_base_/models/retinanet_r50_fpn.py',
+    '../../../_base_/datasets/mot_challenge_det.py', '../../../_base_/default_runtime.py'
 ]
 
 mode = dict(
@@ -10,20 +10,17 @@ mode = dict(
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
-            'https://download.openmmlab.com/mmdetection/v2.0/retinanet/retinanet_r50_fpn_2x_coco/retinanet_r50_fpn_2x_coco_20200131-fdb43119.pth'  # noqa: E501
+            '/home/misc/retinanet_r50_fpn_2x_coco_20200131-fdb43119.pth'  
+            # https://download.openmmlab.com/mmdetection/v2.0/retinanet/retinanet_r50_fpn_2x_coco/retinanet_r50_fpn_2x_coco_20200131-fdb43119.pth
         )
     )
 )
 
-# learning policy
-lr_config = dict(
-    policy='step',
-    warmup='linear',
-    warmup_iters=100,
-    warmup_ratio=1.0 / 100,
-    step=[3])
-# runtime settings
-total_epochs = 4
+#? Configurable settings per experiment
+num_gpus = 1
+total_epochs = 8
+exp_dir = "retinanet_mot17det_train_exp1"
+batch_size = 2  #* set in mot_challenge_det
 
 # data
 data_root = '/home/data/MOT17/'
@@ -33,27 +30,23 @@ data = dict(
     test=dict(ann_file=data_root + 'annotations/train_cocoformat.json'))
 device = 'cuda'
 
-#? Configurable settings per experiment
-num_gpus = 2
-total_epochs = 8
-exp_dir = "retinanet_mot17det_train_exp1"
-batch_size = 2
-
-optimizer = dict(type='SGD', lr=0.005*num_gpus/8, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01*(num_gpus/8)*(batch_size/2), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir)
 
 log_config = dict(
     interval=50,
     hooks=[
         dict(type='TextLoggerHook'),
-        dict(type='TensorboardLoggerHook'),
+        dict(type='TensorboardLoggerHook',
+             log_dir="/home/results/"+exp_dir+"/tf_board",
+             interval=50),
         dict(type='WandbLoggerHook',
             init_kwargs={'name': exp_dir,
-                        'project': 'retina_mot17_det',
-                         'dir': "/home/results/"+exp_dir+"/wandb",
+                        'project': 'retinanet_mot17_det',
+                         'dir': "/home/results/"+exp_dir,
                          'sync_tensorboard': True,
-                        'config': {'lr': 0.005*num_gpus/8, 'batch_size':batch_size*num_gpus},
-                        'notes': '8 epochs; batch size 2; smoothl1loss; 2 gpus; base lr 0.005',
+                        'config': {'lr': 0.01*(num_gpus/8)*(batch_size/2), 'batch_size':batch_size*num_gpus},
+                        'notes': '',
                         'resume': 'allow',   # set to must if need to resume; set id corresponding to run
                         # 'id': 'nnknkq8u'
                         },
