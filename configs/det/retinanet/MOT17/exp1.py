@@ -17,7 +17,7 @@ mode = dict(
 )
 
 #? Configurable settings per experiment
-num_gpus = 1
+num_gpus = 2
 total_epochs = 8
 exp_dir = "retinanet_mot17det_train_exp1"
 batch_size = 2  #* set in mot_challenge_det
@@ -30,7 +30,7 @@ data = dict(
     test=dict(ann_file=data_root + 'annotations/train_cocoformat.json'))
 device = 'cuda'
 
-optimizer = dict(type='SGD', lr=0.01*(num_gpus/8)*(batch_size/2), momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.005*(num_gpus/8)*(batch_size/2), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir)
 
 log_config = dict(
@@ -45,7 +45,7 @@ log_config = dict(
                         'project': 'retinanet_mot17_det',
                          'dir': "/home/results/"+exp_dir,
                          'sync_tensorboard': True,
-                        'config': {'lr': 0.01*(num_gpus/8)*(batch_size/2), 'batch_size':batch_size*num_gpus},
+                        'config': {'lr': 0.005*(num_gpus/8)*(batch_size/2), 'batch_size':batch_size*num_gpus},
                         'notes': '',
                         'resume': 'allow',   # set to must if need to resume; set id corresponding to run
                         # 'id': 'nnknkq8u'
