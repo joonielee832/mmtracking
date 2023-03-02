@@ -67,7 +67,7 @@ class TripletLoss(nn.Module):
         y = torch.ones_like(dist_an)
         return self.loss_weight * self.ranking_loss(dist_an, dist_ap, y)
 
-    def forward(self, feats, targets, feats_cov, **kwargs):
+    def forward(self, feats, targets, feats_cov=None, **kwargs):
         if self.hard_mining:
             return self.hard_mining_triplet_loss_forward(feats, feats_cov, targets)
         else:

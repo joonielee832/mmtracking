@@ -96,7 +96,10 @@ class ExtraLinearReIDHead(BaseHead):
             self.fc_channels
         self.fc_out = nn.Linear(in_channels, self.out_channels)
         if self.extra_fc["extra_fc"]:
-            self.extra_fc_out = nn.Linear(in_channels, self.out_channels)
+            if self.extra_fc["parallel"]:
+                self.extra_fc_out = nn.Linear(in_channels, self.out_channels)
+            else:
+                self.extra_fc_out = nn.Linear(self.out_channels, self.out_channels)
         if self.loss_cls:
             self.bn = nn.BatchNorm1d(self.out_channels)
             self.classifier = nn.Linear(self.out_channels, self.num_classes)
