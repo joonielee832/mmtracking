@@ -4,7 +4,7 @@ _base_ = [
 ]
 
 #? Experiment details
-exp_dir = "resnet_mot17_reid_train_exp7"
+exp_dir = "extrafc_reid_mot17_train_exp7"
 num_gpus = 1
 total_epochs = 6    #* originally 6
 load_from = None
@@ -21,12 +21,13 @@ model = dict(
             style='pytorch'),
         neck=dict(type='GlobalAveragePooling', kernel_size=(8, 4), stride=1),
         head=dict(
-            type='LinearReIDHead',
+            type='ExtraLinearReIDHead',
             num_fcs=1,
             in_channels=2048,
             fc_channels=1024,
             out_channels=128,
             num_classes=380,
+            extra_fc=dict(extra_fc=True, parallel=False),
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
                 type='TripletLoss', margin=0.3, loss_weight=1.0),
@@ -35,7 +36,7 @@ model = dict(
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
-            'https://download.openmmlab.com/mmclassification/v0/resnet/resnet50_batch256_imagenet_20200708-cfb998bf.pth'  # noqa: E501
+            '/home/misc/tracktor_reid_r50_iter25245-a452f51f.pth'  # noqa: E501
         )))
 # optimizer
 optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/1, momentum=0.9, weight_decay=0.0001)

@@ -43,6 +43,7 @@ class ExtraLinearReIDHead(BaseHead):
                  norm_cfg=None,
                  act_cfg=None,
                  num_classes=None,
+                 extra_fc=None,
                  loss=None,
                  loss_pairwise=None,
                  topk=(1, ),
@@ -77,6 +78,7 @@ class ExtraLinearReIDHead(BaseHead):
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
         self.num_classes = num_classes
+        self.extra_fc = extra_fc
         self.accuracy = Accuracy(topk=self.topk)
         self.fp16_enabled = False
 
@@ -93,6 +95,8 @@ class ExtraLinearReIDHead(BaseHead):
         in_channels = self.in_channels if self.num_fcs == 0 else \
             self.fc_channels
         self.fc_out = nn.Linear(in_channels, self.out_channels)
+        if self.extra_fc["extra_fc"]:
+            self.extra_fc_out = nn.Linear(in_channels, self.out_channels)
         if self.loss_cls:
             self.bn = nn.BatchNorm1d(self.out_channels)
             self.classifier = nn.Linear(self.out_channels, self.num_classes)
@@ -103,6 +107,12 @@ class ExtraLinearReIDHead(BaseHead):
         for m in self.fcs:
             x = m(x)
         feats = self.fc_out(x)
+        if self.extra_fc["extra_fc"]:
+            if self.extra_fc["parallel"]:
+                feats_extra = self.extra_fc_out(x)
+                feats = (feats + feats_extra) / 2
+            else:
+                feats = self.extra_fc_out(feats)
         if self.loss_cls:
             feats_bn = self.bn(feats)
             cls_score = self.classifier(feats_bn)
