@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 
 NUM_GPUS=$1
-EXP_DIR=deepsort_test_mot17
+EXP_DIR=prob_reid_test
 # CONFIG=configs/mot/deepsort/deepsort_retina_bdd.py
-CONFIG=configs/mot/deepsort/deepsort_faster-rcnn_fpn_4e_mot17-private-half.py
+# CONFIG=configs/mot/deepsort/deepsort_faster-rcnn_fpn_4e_mot17-private-half.py
+CONFIG=configs/reid/resnet50_prob_b32x8_MOT17.py
 # OUTPUT=/home/results/resnet_bdd_reid_train_exp4
 #? Direct eval in test.py
 RESULTS_DIR=/home/results/$EXP_DIR
 EVAL_DIR=$RESULTS_DIR/eval
 
 # CHECKPOINT=$(find $RESULTS_DIR -name 'latest.pth')
+# ARGS="--work-dir $RESULTS_DIR/eval \
+# --out $RESULTS_DIR/eval/results.pkl \
+# --eval track"
 ARGS="--work-dir $RESULTS_DIR/eval \
---out $RESULTS_DIR/eval/results.pkl \
---eval track"
+--out $RESULTS_DIR/eval/results.pkl"
 
 [ -d $EVAL_DIR ] && rm -rf $EVAL_DIR
 if [[ $NUM_GPUS -gt 1 ]]
