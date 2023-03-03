@@ -5,7 +5,7 @@ _base_ = [
 TRAIN_REID = True
 
 #? Experiment details
-exp_dir = "prob_reid_mot17_train_exp1"
+exp_dir = "prob_reid_mot17_train_exp2"
 num_gpus = 2
 total_epochs = 6    #* originally 6
 load_from = None
@@ -35,7 +35,7 @@ model = dict(
             loss_pairwise=dict(
                 type='TripletLoss', margin=0.3, loss_weight=1.0, prob=False, num_samples=100),  #* num_samples configurable
             loss_uncertainty=dict(
-                type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),    #* margin_exp and loss_weight configurable
+                type='FeatureUncertaintyLoss', margin_exp=6, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
             act_cfg=dict(type='ReLU')),
         init_cfg=dict(

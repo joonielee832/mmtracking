@@ -5,11 +5,11 @@ _base_ = [
 TRAIN_REID = True
 
 #? Experiment details
-exp_dir = "prob_reid_mot17_train_exp1"
+exp_dir = "prob_reid_mot17_train_exp3"
 num_gpus = 2
 total_epochs = 6    #* originally 6
 load_from = None
-resume_from = "/home/results/"+exp_dir+"/latest.pth"
+resume_from = None
 batch_size = 1
 
 model = dict(
@@ -29,7 +29,7 @@ model = dict(
             fc_channels=1024,
             out_channels=128,
             num_classes=380,
-            lce_sample_weight=0.1,  #* weight for cross entropy sample loss; configurable
+            lce_sample_weight=0.5,  #* weight for cross entropy sample loss; configurable
             num_samples=10,         #* num samples for cross entropy; configurable
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(

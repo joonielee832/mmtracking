@@ -5,7 +5,7 @@ _base_ = [
 
 #? Experiment details
 exp_dir = "extrafc_reid_mot17_train_exp7"
-num_gpus = 1
+num_gpus = 2
 total_epochs = 6    #* originally 6
 load_from = None
 batch_size = 1
