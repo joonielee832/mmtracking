@@ -1,12 +1,14 @@
-TRAIN_REID = True
 _base_ = [
     '../../_base_/datasets/mot_challenge_reid.py', '../../_base_/default_runtime.py'
 ]
 
+TRAIN_REID = True
+
 #? Experiment details
-exp_dir = "extrafc_reid_mot17_train_exp8"
+exp_dir = "prob_reid_mot17_train_exp4"
 num_gpus = 2
 total_epochs = 6    #* originally 6
+load_from = None
 resume_from = "/home/results/"+exp_dir+"/latest.pth"
 batch_size = 1
 
@@ -21,16 +23,19 @@ model = dict(
             style='pytorch'),
         neck=dict(type='GlobalAveragePooling', kernel_size=(8, 4), stride=1),
         head=dict(
-            type='ExtraLinearReIDHead',
+            type='ProbabilisticReIDHead',
             num_fcs=1,
             in_channels=2048,
             fc_channels=1024,
             out_channels=128,
             num_classes=380,
-            extra_fc=dict(extra_fc=True, parallel=True),
+            lce_sample_weight=0.1,  #* weight for cross entropy sample loss; configurable
+            num_samples=10,         #* num samples for cross entropy; configurable
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
-                type='TripletLoss', margin=0.3, loss_weight=1.0),
+                type='TripletLoss', margin=0.3, loss_weight=1.0, prob=True, num_samples=100),  #* num_samples configurable
+            loss_uncertainty=dict(
+                type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
             act_cfg=dict(type='ReLU')),
         init_cfg=dict(
@@ -58,13 +63,14 @@ log_config = dict(
              interval=50),
         # dict(type='WandbLoggerHook',
         #     init_kwargs={'name': exp_dir,
-        #                 'project': 'resnet_reid_mot17',
+        #                 'project': 'resnet_prob_reid_mot17',
         #                  'dir': "/home/results/"+exp_dir,
         #                  'sync_tensorboard': True,
         #                 'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
         #                 'notes': '',
         #                 'resume': 'allow',   # set to must if need to resume; set id corresponding to run
-        #                 # 'id': 'nnknkq8u'
+        #                 'mode': 'offline',
+        #                 'id': 'sv56jwmw'
         #                 },
         #     interval=50)
     ]

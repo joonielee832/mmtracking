@@ -7,7 +7,7 @@ _base_ = [
 exp_dir = "extrafc_reid_mot17_train_exp7"
 num_gpus = 2
 total_epochs = 6    #* originally 6
-load_from = "/home/results/"+exp_dir+"/latest.pth"
+resume_from = "/home/results/"+exp_dir+"/latest.pth"
 batch_size = 1
 
 model = dict(
