@@ -5,11 +5,11 @@ _base_ = [
 TRAIN_REID = True
 
 #? Experiment details
-exp_dir = "prob_reid_mot17_train_exp2"
+exp_dir = "prob_reid_mot17_train_exp13"
 num_gpus = 2
-total_epochs = 6    #* originally 6
+total_epochs = 12    #* originally 6
 load_from = None
-resume_from = None
+resume_from = "/home/results/"+exp_dir+"/latest.pth"
 batch_size = 1
 
 model = dict(
@@ -33,16 +33,11 @@ model = dict(
             num_samples=10,         #* num samples for cross entropy; configurable
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
-                type='TripletLoss', margin=0.3, loss_weight=1.0, prob=False, num_samples=100),  #* num_samples configurable
+                type='TripletLoss', margin=0.3, loss_weight=1.0, prob=True, num_samples=100),  #* num_samples configurable
             loss_uncertainty=dict(
                 type='FeatureUncertaintyLoss', margin_exp=6, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
-            act_cfg=dict(type='ReLU')),
-        init_cfg=dict(
-            type='Pretrained',
-            checkpoint=  # noqa: E251
-            '/home/misc/tracktor_reid_r50_iter25245-a452f51f.pth'  # noqa: E501
-        )))
+            act_cfg=dict(type='ReLU'))))
 # optimizer
 optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/1, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
