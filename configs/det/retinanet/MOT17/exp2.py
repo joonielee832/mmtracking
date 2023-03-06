@@ -18,8 +18,8 @@ mode = dict(
 
 #? Configurable settings per experiment
 num_gpus = 2
-total_epochs = 8    #* originally 4; but 8 cause lr/2 vs Faster R-CNN; 16 bc use full dataset vs half
-exp_dir = "retinanet_mot17det_train_exp1"
+total_epochs = 16    #* originally 4; but 8 cause lr/2 vs Faster R-CNN; 16 bc use full dataset vs half
+exp_dir = "retinanet_mot17det_train_exp2"
 batch_size = 2  #* set in mot_challenge_det
 
 # data
