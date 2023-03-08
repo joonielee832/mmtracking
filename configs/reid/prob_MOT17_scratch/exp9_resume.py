@@ -37,7 +37,12 @@ model = dict(
             loss_uncertainty=dict(
                 type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),    #* margin_exp and loss_weight configurable
             norm_cfg=dict(type='BN1d'),
-            act_cfg=dict(type='ReLU'))))
+            act_cfg=dict(type='ReLU')),
+        init_cfg=dict(
+            type='Pretrained',
+            checkpoint=  # noqa: E251
+                '/home/misc/resnet50_batch256_imagenet_20200708-cfb998bf.pth'  # noqa: E501
+        )))
 # optimizer
 optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/1, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
@@ -47,7 +52,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=1000,
     warmup_ratio=1.0 / 1000,
-    step=[round(total_epochs*0.8)])
+    step=[total_epochs-1])
 
 log_config = dict(
     interval=50,
