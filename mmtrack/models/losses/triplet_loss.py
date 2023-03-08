@@ -26,7 +26,7 @@ class TripletLoss(nn.Module):
         self.prob = prob
         self.hard_mining = hard_mining
 
-    def hard_mining_triplet_loss_forward(self, feats, feats_cov, targets):
+    def hard_mining_triplet_loss_forward(self, feats, feats_cov, targets, alpha):
         """
         Args:
             feats (torch.Tensor): feature matrix with shape
@@ -48,7 +48,7 @@ class TripletLoss(nn.Module):
         if self.prob:
             dist_feat = torch.cdist(feats, feats, p=2)
             dist_cov = torch.cdist(feats_cov, feats_cov, p=2)
-            dist = dist_feat + dist_cov
+            dist = dist_feat + alpha * dist_cov
         else:
             dist = torch.cdist(feats, feats, p=2)
 
@@ -67,8 +67,8 @@ class TripletLoss(nn.Module):
         y = torch.ones_like(dist_an)
         return self.loss_weight * self.ranking_loss(dist_an, dist_ap, y)
 
-    def forward(self, feats, targets, feats_cov=None, **kwargs):
+    def forward(self, feats, targets, feats_cov=None, alpha=0.1, **kwargs):
         if self.hard_mining:
-            return self.hard_mining_triplet_loss_forward(feats, feats_cov, targets)
+            return self.hard_mining_triplet_loss_forward(feats, feats_cov, targets, alpha=alpha)
         else:
             raise NotImplementedError()

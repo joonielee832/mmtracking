@@ -46,11 +46,11 @@ class ProbabilisticReIDHead(BaseHead):
                  in_channels,
                  fc_channels,
                  out_channels,
-                 lce_sample_weight=0.1,
                  num_samples=10,
                  norm_cfg=None,
                  act_cfg=None,
                  num_classes=None,
+                 loss_attenuation=None,
                  loss=None,
                  loss_pairwise=None,
                  loss_uncertainty=None,
@@ -86,10 +86,22 @@ class ProbabilisticReIDHead(BaseHead):
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
         self.num_classes = num_classes
-        self.lce_sample_weight = lce_sample_weight
+        self.loss_attenuation = loss_attenuation
         self.num_samples = num_samples
         self.accuracy = Accuracy(topk=self.topk)
         self.fp16_enabled = False
+        
+        #? Set loss attenuation parameters
+        self.current_epoch = 0
+        self.current_iter = 0
+        if self.loss_attenuation is not None:
+            if self.loss_attenuation['attenuated']:
+                self.epoch_step = self.loss_attenuation['epoch_step']
+                self.iters_in_epoch = self.loss_attenuation['iters_in_epoch']
+            else:
+                self.alpha = self.loss_attenuation['alpha']
+        else:
+            self.alpha = 0.1
 
         self._init_layers()
 
@@ -142,9 +154,15 @@ class ProbabilisticReIDHead(BaseHead):
     def loss(self, gt_label, feats, feats_logcov, feats_cov, cls_score=None, cls_sample_score=None):
         """Compute losses."""
         losses = dict()
+        
+        #? Compute alpha
+        if self.loss_attenuation is not None and self.loss_attenuation['attenuated']:
+            self.alpha = self.current_epoch / self.epoch_step + \
+                        ((self.current_iter+1) % self.iters_in_epoch) / self.iters_in_epoch
+            self.alpha = min(self.alpha, 1.0)
 
         if self.loss_triplet:
-            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, feats_cov=feats_cov)
+            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, feats_cov=feats_cov, alpha=self.alpha)
 
         if self.loss_cls:
             assert cls_score is not None
@@ -155,8 +173,7 @@ class ProbabilisticReIDHead(BaseHead):
             gt_label_repeat = torch.repeat_interleave(gt_label, self.num_samples)
             ce_loss_sample = self.loss_cls(cls_sample_score, gt_label_repeat)
             
-            losses['ce_loss'] = (1 - self.lce_sample_weight) * ce_loss + self.lce_sample_weight * ce_loss_sample
-            losses['uncertainty_loss'] = self.loss_uncertainty(feats_logcov)
+            losses['ce_loss'] = (1 - self.alpha) * ce_loss + self.alpha * (ce_loss_sample + self.loss_uncertainty(feats_logcov))
             
             # compute accuracy
             acc = self.accuracy(cls_score, gt_label)
@@ -165,5 +182,4 @@ class ProbabilisticReIDHead(BaseHead):
                 f'top-{k}': a
                 for k, a in zip(self.topk, acc)
             }
-
         return losses
