@@ -26,7 +26,7 @@ class TripletLoss(nn.Module):
         self.prob = prob
         self.hard_mining = hard_mining
         
-    def compute_dist(inputs, batch_size):
+    def compute_dist(self,inputs, batch_size):
         # Compute Euclidean distance
         dist = torch.pow(inputs, 2).sum(
             dim=1, keepdim=True).expand(batch_size, batch_size)
