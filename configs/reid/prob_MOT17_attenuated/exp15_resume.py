@@ -7,6 +7,7 @@ _base_ = [
 exp_dir = "prob_reid_mot17_train_exp15"
 num_gpus = 2
 total_epochs = 6    #* originally 6
+resume_from = "/home/results/"+exp_dir+"/latest.pth"
 load_from = None
 batch_size = 1
 

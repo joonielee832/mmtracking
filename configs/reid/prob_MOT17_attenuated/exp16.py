@@ -6,7 +6,7 @@ TRAIN_REID = True
 
 #? Experiment details
 exp_dir = "prob_reid_mot17_train_exp16"
-num_gpus = 1
+num_gpus = 2
 total_epochs = 6    #* originally 6
 step = 5
 load_from = None
