@@ -25,6 +25,15 @@ class TripletLoss(nn.Module):
         self.loss_weight = loss_weight
         self.prob = prob
         self.hard_mining = hard_mining
+        
+    def compute_dist(inputs, batch_size):
+        # Compute Euclidean distance
+        dist = torch.pow(inputs, 2).sum(
+            dim=1, keepdim=True).expand(batch_size, batch_size)
+        dist = dist + dist.t()
+        dist.addmm_(inputs, inputs.t(), beta=1, alpha=-2)
+        dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
+        return dist
 
     def hard_mining_triplet_loss_forward(self, feats, feats_cov, targets, alpha):
         """
@@ -46,11 +55,14 @@ class TripletLoss(nn.Module):
         # dist = dist.clamp(min=1e-12).sqrt()  # for numerical stability
         #!---------------------------------------------------------------------
         if self.prob:
-            dist_feat = torch.cdist(feats, feats, p=2)
-            dist_cov = torch.cdist(feats_cov, feats_cov, p=2)
+            # dist_feat = torch.cdist(feats, feats, p=2)
+            dist_feat = self.compute_dist(feats, batch_size)
+            # dist_cov = torch.cdist(feats_cov, feats_cov, p=2)
+            dist_cov = self.compute_dist(feats_cov, batch_size)
             dist = dist_feat + alpha * dist_cov
         else:
-            dist = torch.cdist(feats, feats, p=2)
+            # dist = torch.cdist(feats, feats, p=2)
+            dist = self.compute_dist(feats, batch_size)
 
         # For each anchor, find the furthest positive sample
         # and nearest negative sample in the embedding space
