@@ -118,7 +118,7 @@ class ProbabilisticReIDHead(BaseHead):
             self.fc_channels
             
         #? Create module for feature distribution mean explicit estimation
-        self.feat_mean = FcModule(in_channels, self.out_channels)
+        self.fc_out = FcModule(in_channels, self.out_channels)
         #? Create layer for feature covariance estimation (diagonal)
         self.feat_cov = FcModule(in_channels, self.out_channels)
 
@@ -131,7 +131,7 @@ class ProbabilisticReIDHead(BaseHead):
         """Model forward."""
         for m in self.fcs:
             x = m(x)
-        feats = self.feat_mean(x)
+        feats = self.fc_out(x)
         feats_logcov = self.feat_cov(x)
         if self.loss_cls:
             feats_bn = self.bn(feats)
