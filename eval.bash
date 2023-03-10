@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 NUM_GPUS=$1
-EXP_DIR=retinanet_only_exp2
-CONFIG=configs/mot/deepsort/retinanet_only/deepsort_retinanet_exp2.py
-OUTPUT=/home/results/deepsort
+EXP_DIR=exp16
+CONFIG=configs/mot/deepsort/retinanet_prob_reid/prob_reid_exp16.py
+OUTPUT=/home/results/deepsort/prob_reid
 
 #? Direct eval in test.py
 RESULTS_DIR=$OUTPUT/$EXP_DIR

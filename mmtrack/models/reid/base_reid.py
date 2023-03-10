@@ -26,12 +26,17 @@ class BaseReID(ImageClassifier):
         return losses
 
     @auto_fp16(apply_to=('img', ), out_fp32=True)
-    def simple_test(self, img, **kwargs):
+    def simple_test(self, img, prob=False, **kwargs):
         """Test without augmentation."""
         if img.nelement() > 0:
             x = self.extract_feat(img)
-            head_outputs = self.head.forward_train(x[0])
-            feats = head_outputs[0]
-            return feats
+            if prob:
+                head_outputs = self.head.forward_train(x[0])
+                feats, feats_cov = head_outputs[0], head_outputs[2]
+                return feats, feats_cov
+            else:
+                head_outputs = self.head.forward_train(x[0])
+                feats = head_outputs[0]
+                return feats, None
         else:
             return img.new_zeros(0, self.head.out_channels)

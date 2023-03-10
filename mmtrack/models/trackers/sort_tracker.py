@@ -8,6 +8,7 @@ from motmetrics.lap import linear_sum_assignment
 from mmtrack.core import imrenormalize
 from mmtrack.core.bbox import bbox_xyxy_to_cxcyah
 from mmtrack.models import TRACKERS
+from mmtrack.core.utils import JSD
 from .base_tracker import BaseTracker
 
 
@@ -52,6 +53,9 @@ class SortTracker(BaseTracker):
         self.reid = reid
         self.match_iou_thr = match_iou_thr
         self.num_tentatives = num_tentatives
+        
+        if self.reid['prob'] and self.reid['prob']['mode'] == 'Jensen':
+            self.jsd = JSD(num_samples=self.reid['prob']['num_samples'])
 
     @property
     def confirmed_ids(self):
@@ -145,9 +149,10 @@ class SortTracker(BaseTracker):
                 dtype=torch.long)
             self.num_tracks += num_new_tracks
             if self.with_reid:
-                embeds = model.reid.simple_test(
+                # breakpoint()
+                embeds, embed_covs = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
-                                   rescale))
+                                   rescale), prob=True if self.reid['prob'] else False)
         else:
             ids = torch.full((bboxes.size(0), ), -1, dtype=torch.long)
 
@@ -158,18 +163,41 @@ class SortTracker(BaseTracker):
 
             active_ids = self.confirmed_ids
             if self.with_reid:
-                embeds = model.reid.simple_test(
+                embeds, embed_covs = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
-                                   rescale))
+                                   rescale), prob=True if self.reid['prob'] else False)
                 # reid
                 if len(active_ids) > 0:
+                    #TODO::--------------------------------
                     track_embeds = self.get(
                         'embeds',
                         active_ids,
                         self.reid.get('num_samples', None),
                         behavior='mean')
-                    reid_dists = torch.cdist(track_embeds,
-                                             embeds).cpu().numpy()
+                    
+                    if self.reid['prob']:
+                        track_embed_covs = self.get(
+                            'embed_covs',
+                            active_ids,
+                            self.reid.get('num_samples', None),
+                            behavior='mean')
+                        if self.reid['prob']['mode'] == 'Jensen':
+                            num_tracks = track_embeds.size(0)
+                            num_embeds = embeds.size(0)
+                            reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
+                            
+                            for i in range(num_tracks):
+                                for j in range (num_embeds):
+                                    reid_dists[i][j] = self.jsd(track_embeds[i], track_embed_covs[i], embeds[j], embed_covs[j])
+                            
+                        else:
+                            embed_dist = torch.cdist(track_embeds,embeds)
+                            embed_cov_dist = torch.cdist(track_embed_covs,embed_covs)
+                            reid_dists = embed_dist + embed_cov_dist
+                    else:
+                        reid_dists = torch.cdist(track_embeds,embeds)
+                    reid_dists = reid_dists.cpu().numpy()
+                    #TODO::--------------------------------
 
                     valid_inds = [list(self.ids).index(_) for _ in active_ids]
                     reid_dists[~np.isfinite(costs[valid_inds, :])] = np.nan
@@ -179,7 +207,7 @@ class SortTracker(BaseTracker):
                         dist = reid_dists[r, c]
                         if not np.isfinite(dist):
                             continue
-                        if dist <= self.reid['match_score_thr']:
+                        if dist <= self.reid['match_score_thr']:    #! modify score threshold 
                             ids[c] = active_ids[r]
 
             active_ids = [
@@ -211,5 +239,6 @@ class SortTracker(BaseTracker):
             scores=bboxes[:, -1],
             labels=labels,
             embeds=embeds if self.with_reid else None,
+            embed_covs=embed_covs if self.with_reid else None,
             frame_ids=frame_id)
         return bboxes, labels, ids

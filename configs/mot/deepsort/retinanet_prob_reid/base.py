@@ -5,11 +5,14 @@ _base_ = [
 model = dict(
     type='DeepSORT',
     detector=dict(
-        bbox_head=dict(num_classes=1),
+        bbox_head=dict(
+            bbox_coder=dict(clip_border=False), 
+            num_classes=1,
+            loss_bbox=dict(type='L1Loss', loss_weight=1.0)),
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
-            '/home/results/retinanet_mot17det_train_exp1/latest.pth'   #* configurable
+            '/home/results/retinanet_mot17det_train_exp7/latest.pth'   #* configurable
         )
     ),
     motion=dict(type='KalmanFilter', center_only=False),
