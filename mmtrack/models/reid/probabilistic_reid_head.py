@@ -50,6 +50,7 @@ class ProbabilisticReIDHead(BaseHead):
                  norm_cfg=None,
                  act_cfg=None,
                  num_classes=None,
+                 alpha=0.1,
                  loss_attenuation=None,
                  loss=None,
                  loss_pairwise=None,
@@ -101,7 +102,7 @@ class ProbabilisticReIDHead(BaseHead):
             else:
                 self.alpha = self.loss_attenuation['alpha']
         else:
-            self.alpha = 0.1
+            self.alpha = alpha
 
         self._init_layers()
 

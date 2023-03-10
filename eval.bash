@@ -2,7 +2,7 @@
 
 NUM_GPUS=$1
 EXP_DIR=$2
-CONFIG=configs/mot/deepsort/retinanet_prob_reid/prob_reid_$EXP_DIR.py
+CONFIG=configs/mot/deepsort/retinanet_prob_reid/prob_reid_exp$EXP_DIR.py
 OUTPUT=/home/results/deepsort/prob_reid
 
 #? Direct eval in test.py
