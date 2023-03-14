@@ -54,7 +54,7 @@ model = dict(
             img_scale=(256, 128),
             img_norm_cfg=None,
             match_score_thr=2.0,    #* originally 2.0; double if 'Frobenius'
-            prob=dict(mode='Jensen', num_samples=100)),  #* mode ('Jensen', 'Frobenius'); if 'Jensen', set num_samples
+            prob=dict(mode='Jensen', num_samples=10)),  #* mode ('Jensen', 'Frobenius'); if 'Jensen', set num_samples
         match_iou_thr=0.5,
         momentums=None,
         num_tentatives=2,
