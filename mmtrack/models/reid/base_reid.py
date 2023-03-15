@@ -32,11 +32,11 @@ class BaseReID(ImageClassifier):
             x = self.extract_feat(img)
             if prob:
                 head_outputs = self.head.forward_train(x[0])
-                feats, feats_cov = head_outputs[0], head_outputs[2]
-                return feats, feats_cov
+                feats, feats_log_cov, feats_cov = head_outputs[0:3]
+                return feats, feats_log_cov, feats_cov
             else:
                 head_outputs = self.head.forward_train(x[0])
                 feats = head_outputs[0]
-                return feats, None
+                return feats
         else:
             return img.new_zeros(0, self.head.out_channels)

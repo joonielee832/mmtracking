@@ -43,3 +43,39 @@ class JSD(nn.Module):
 
         # Optimize the return statement using `clamp`
         return torch.sqrt(torch.clamp(jsd_einsum, min=1E-5))
+    
+class KLDiv(nn.Module):
+    """Calculate KL divergence between two Gaussian distributions with diagonal covariance matrices.
+    """
+    def __init__(self) -> None:
+        super(KLDiv, self).__init__()
+    
+    def forward(self, mu_p: torch.tensor, 
+                log_sigma_p: torch.tensor, 
+                mu_q: torch.tensor, 
+                log_sigma_q: torch.tensor):
+        """Calculate KL divergence between two Gaussian distributions with diagonal covariance matrices.
+        Args:
+            mu_p (torch.tensor): _description_
+            log_sigma_p (torch.tensor): log of diagonal elements of covariance matrix
+            mu_q (torch.tensor): _description_
+            log_sigma_q (torch.tensor): log of diagonal elements of covariance matrix
+
+        Returns:
+            float: KL Divergence scalar
+        """
+        shape_conditions = [log_sigma_p.shape == log_sigma_q.shape, mu_p.shape == mu_q.shape]
+        if not all(shape_conditions):
+            raise ValueError('Input shapes are not equal')
+        
+        #? Check if covariance diagonal
+        if len(log_sigma_p.shape) != 1:
+            raise NotImplementedError('KL divergence for non-diagonal covariance matrices is not implemented')
+
+        log_p_q = (log_sigma_q - log_sigma_p).sum()
+        k = mu_p.shape[-1]
+        sigma_q_inv = torch.exp(-log_sigma_q)
+        maha_dist = ((mu_p - mu_q) * sigma_q_inv) @ (mu_p - mu_q)
+        trace = torch.exp(-log_sigma_q + log_sigma_p).sum()
+
+        return 0.5 * (log_p_q + maha_dist - k + trace)

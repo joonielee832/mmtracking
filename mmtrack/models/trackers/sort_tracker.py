@@ -8,7 +8,7 @@ from motmetrics.lap import linear_sum_assignment
 from mmtrack.core import imrenormalize
 from mmtrack.core.bbox import bbox_xyxy_to_cxcyah
 from mmtrack.models import TRACKERS
-from mmtrack.core.utils import JSD
+from mmtrack.core.utils import JSD, KLDiv
 from .base_tracker import BaseTracker
 
 
@@ -54,8 +54,11 @@ class SortTracker(BaseTracker):
         self.match_iou_thr = match_iou_thr
         self.num_tentatives = num_tentatives
         
-        if self.reid['prob'] and self.reid['prob']['mode'] == 'Jensen':
-            self.jsd = JSD(num_samples=self.reid['prob']['num_samples'])
+        if self.reid['prob']:
+            if self.reid['prob']['mode'] == 'Jensen':
+                self.jsd = JSD(num_samples=self.reid['prob']['num_samples'])
+            else:
+                self.kl = KLDiv()
 
     @property
     def confirmed_ids(self):
@@ -150,7 +153,7 @@ class SortTracker(BaseTracker):
             self.num_tracks += num_new_tracks
             if self.with_reid:
                 # breakpoint()
-                embeds, embed_covs = model.reid.simple_test(
+                embeds, embed_log_covs, embed_covs = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
                                    rescale), prob=True if self.reid['prob'] else False)
         else:
@@ -163,12 +166,11 @@ class SortTracker(BaseTracker):
 
             active_ids = self.confirmed_ids
             if self.with_reid:
-                embeds, embed_covs = model.reid.simple_test(
+                embeds, embed_log_covs, embed_covs = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
                                    rescale), prob=True if self.reid['prob'] else False)
                 # reid
                 if len(active_ids) > 0:
-                    #TODO::--------------------------------
                     track_embeds = self.get(
                         'embeds',
                         active_ids,
@@ -181,15 +183,23 @@ class SortTracker(BaseTracker):
                             active_ids,
                             self.reid.get('num_samples', None),
                             behavior='mean')
+                        track_embed_log_covs = self.get(
+                            'embed_log_covs',
+                            active_ids,
+                            self.reid.get('num_samples', None),
+                            behavior='mean')
+                        num_tracks = track_embeds.size(0)
+                        num_embeds = embeds.size(0)
                         if self.reid['prob']['mode'] == 'Jensen':
-                            num_tracks = track_embeds.size(0)
-                            num_embeds = embeds.size(0)
                             reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
-                            
                             for i in range(num_tracks):
                                 for j in range (num_embeds):
                                     reid_dists[i][j] = self.jsd(track_embeds[i], track_embed_covs[i], embeds[j], embed_covs[j])
-                            
+                        elif self.reid['prob']['mode'] == 'KL':
+                            reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
+                            for i in range(num_tracks):
+                                for j in range (num_embeds):
+                                    reid_dists[i][j] = self.kl(track_embeds[i], track_embed_log_covs[i], embeds[j], embed_log_covs[j])
                         else:
                             embed_dist = torch.cdist(track_embeds,embeds)
                             embed_cov_dist = torch.cdist(track_embed_covs,embed_covs)
@@ -240,5 +250,6 @@ class SortTracker(BaseTracker):
             labels=labels,
             embeds=embeds if self.with_reid else None,
             embed_covs=embed_covs if self.with_reid else None,
+            embed_log_covs=embed_log_covs if self.with_reid else None,
             frame_ids=frame_id)
         return bboxes, labels, ids
