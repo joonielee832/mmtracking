@@ -11,16 +11,12 @@ model = dict(
             num_classes=1,
             use_pos_mask=True,
             with_nms=True,
-            loss_bbox=dict(type='L1WithNLL', 
-                               covariance_type="diagonal", 
-                               annealing_step=int(10000),
-                               loss_weight=1.0),
+            loss_bbox=dict(annealing_step=int(10000)),
             init_cfg=
                 dict(type='Xavier', layer='Conv2d', override=[
                     dict(type='Xavier', name='retina_cls_var', layer='Conv2d', bias=-10.0),
                     dict(type='Xavier', name='retina_reg_cov', layer='Conv2d', bias=0.0)
-                ])),
-        init_cfg=dict(type='Pretrained', checkpoint='/home/misc/retinanet_r50_fpn_2x_coco_20200131-fdb43119.pth')
+                ]))
     )
 )
 
