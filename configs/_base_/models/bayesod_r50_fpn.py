@@ -9,8 +9,7 @@ model = dict(
             type="ProbabilisticRetinaHead",
             bbox_covariance_type="diagonal",
             loss_bbox=dict(type='L1WithNLL', 
-                               covariance_type="diagonal", 
-                               annealing_step=int(10000),   # placeholder value; to be set in exp configs
+                               covariance_type="diagonal",
                                loss_weight=1.0),
             loss_cls=dict(
                 type='FocalAttenuatedLoss',

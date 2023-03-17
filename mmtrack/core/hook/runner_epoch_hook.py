@@ -15,15 +15,24 @@ class EpochHook(Hook):
 
     def before_epoch(self, runner):
         #? Set epoch number for loss attenuation in probabilistic reid head
-        runner.model.module.head.current_epoch = runner.epoch
-        pass
+        if hasattr(runner.model.module, 'head'):
+            runner.model.module.head.current_epoch = runner.epoch
+        
+        #? Set epoch number for loss attenuation in probabilistic retinanet head
+        if hasattr(runner.model.module, 'bbox_head'):
+            runner.model.module.bbox_head.current_epoch = runner.epoch
 
     def after_epoch(self, runner):
         pass
 
     def before_iter(self, runner):
         #? Set iteration number for loss attenuation in probabilistic reid head
-        runner.model.module.head.current_iter = runner.iter
+        if hasattr(runner.model.module, 'head'):
+            runner.model.module.head.current_iter = runner.iter
+        
+        #? Set iteration number for loss attenuation in probabilistic retinanet head
+        if hasattr(runner.model.module, 'bbox_head'):
+            runner.model.module.bbox_head.current_iter = runner.iter
 
     def after_iter(self, runner):
         pass

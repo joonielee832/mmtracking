@@ -4,14 +4,28 @@ _base_ = [
     '../../../_base_/datasets/mot_challenge_det.py', '../../../_base_/default_runtime.py'
 ]
 
+#? Configurable settings per experiment
+num_gpus = 1
+total_epochs = 4
+step = total_epochs - 1
+exp_dir = "bayesod_mot17det_train_exp1"
+iters_in_epoch = 3996  #* 3996 is the number of iterations in one epoch for MOT17 with batch size 2 and 1 GPU
+
+custom_hooks = [
+    dict(type='EpochHook')
+]
+
 model = dict(
     detector=dict(
         bbox_head=dict(
             bbox_coder=dict(clip_border=False), 
             num_classes=1,
-            use_pos_mask=True,
+            use_pos_mask=False,
             with_nms=True,
-            loss_bbox=dict(annealing_step=int(10000)),
+            epoch_step=step-1,
+            iters_in_epoch=iters_in_epoch/(num_gpus),
+            loss_cls=dict(attenuated=True),
+            loss_bbox=dict(attenuated=True),
             init_cfg=
                 dict(type='Xavier', layer='Conv2d', override=[
                     dict(type='Xavier', name='retina_cls_var', layer='Conv2d', bias=-10.0),
@@ -19,13 +33,6 @@ model = dict(
                 ]))
     )
 )
-
-#? Configurable settings per experiment
-num_gpus = 1
-total_epochs = 4
-exp_dir = "bayesod_mot17det_train_exp1"
-
-device = 'cuda'
 
 optimizer = dict(type='SGD', lr=0.01*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
@@ -56,4 +63,6 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=100,
     warmup_ratio=0.01*(num_gpus/8),
-    step=[3])
+    step=[total_epochs-1])
+
+device = 'cuda'
