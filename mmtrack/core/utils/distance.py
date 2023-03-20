@@ -7,26 +7,33 @@ class JSD(nn.Module):
         self.num_samples = num_samples
     
     def sample_normal(self, mu, sigma):
-        if not hasattr(self, 'mvn'):
-            self.mvn = torch.distributions.MultivariateNormal(torch.zeros_like(mu, device=mu.device, requires_grad=False), 
-                                                              torch.eye(mu.shape[-1], device=mu.device, requires_grad=False))
-        standard_norm = self.mvn.rsample((self.num_samples,))
-        samples = mu + sigma * standard_norm
-        return samples
+        # if not hasattr(self, 'mvn'):
+        #     self.mvn = torch.distributions.MultivariateNormal(torch.zeros_like(mu, device=mu.device, requires_grad=False), 
+        #                                                       torch.eye(mu.shape[-1], device=mu.device, requires_grad=False))
+        # standard_norm = self.mvn.rsample((self.num_samples,))
+        # samples = mu + sigma * standard_norm
+        univ_norm_dists = torch.distributions.normal.Normal(mu, scale=sigma)
+        pred_stochastic = univ_norm_dists.rsample((self.num_samples,))
+        return pred_stochastic
     
     def forward(self, mu_1: torch.tensor, sigma_1: torch.tensor, mu_2: torch.tensor, sigma_2: torch.tensor):
         if sigma_1.shape != sigma_2.shape:
             raise ValueError('Sigma shapes are not equal')
 
-        P_samples = self.sample_normal(mu_1, sigma_1)
-        Q_samples = self.sample_normal(mu_2, sigma_2)
+        # P_samples = self.sample_normal(mu_1, sigma_1)
+        # Q_samples = self.sample_normal(mu_2, sigma_2)
+        # breakpoint()
+        P = torch.distributions.normal.Normal(mu_1, scale=sigma_1)
+        Q = torch.distributions.normal.Normal(mu_2, scale=sigma_2)
+        P_samples = P.rsample((self.num_samples,))
+        Q_samples = Q.rsample((self.num_samples,))
 
-        if len(sigma_1.shape) == 1:
-            sigma_1 = torch.diag(sigma_1)
-            sigma_2 = torch.diag(sigma_2)
+        # if len(sigma_1.shape) == 1:
+        #     sigma_1 = torch.diag(sigma_1)
+        #     sigma_2 = torch.diag(sigma_2)
 
-        P = torch.distributions.MultivariateNormal(mu_1, sigma_1)
-        Q = torch.distributions.MultivariateNormal(mu_2, sigma_2)
+        # P = torch.distributions.MultivariateNormal(mu_1, sigma_1)
+        # Q = torch.distributions.MultivariateNormal(mu_2, sigma_2)
 
         P_log_prob_P = P.log_prob(P_samples)
         P_log_prob_Q = P.log_prob(Q_samples)
