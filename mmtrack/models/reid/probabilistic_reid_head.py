@@ -163,7 +163,7 @@ class ProbabilisticReIDHead(BaseHead):
             self.alpha = min(self.alpha, 1.0)
 
         if self.loss_triplet:
-            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, feats_cov=feats_cov, alpha=self.alpha)
+            losses['triplet_loss'] = self.loss_triplet(feats, gt_label, feats_log_cov=feats_logcov, alpha=self.alpha)
 
         if self.loss_cls:
             assert cls_score is not None
