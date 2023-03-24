@@ -46,6 +46,7 @@ class SortTracker(BaseTracker):
                      match_score_thr=2.0),
                  match_iou_thr=0.7,
                  num_tentatives=3,
+                 alpha=0.1,
                  init_cfg=None,
                  **kwargs):
         super().__init__(init_cfg=init_cfg, **kwargs)
@@ -53,6 +54,7 @@ class SortTracker(BaseTracker):
         self.reid = reid
         self.match_iou_thr = match_iou_thr
         self.num_tentatives = num_tentatives
+        self.alpha = alpha
         
         if self.reid['prob']:
             if self.reid['prob']['mode'] == 'Jensen':
@@ -144,6 +146,7 @@ class SortTracker(BaseTracker):
         bboxes = bboxes[valid_inds]
         labels = labels[valid_inds]
 
+        #? Iteration 0: start new tracks
         if self.empty or bboxes.size(0) == 0:
             num_new_tracks = bboxes.size(0)
             ids = torch.arange(
@@ -204,26 +207,39 @@ class SortTracker(BaseTracker):
                             embed_dist = torch.cdist(track_embeds,embeds)
                             embed_cov_dist = torch.cdist(track_embed_covs,embed_covs)
                             reid_dists = embed_dist + embed_cov_dist
+                            #TODO: need to change the distance threshold if this is used
                     else:
                         reid_dists = torch.cdist(track_embeds,embeds)
                     reid_dists = reid_dists.cpu().numpy()
                     #TODO::--------------------------------
 
                     valid_inds = [list(self.ids).index(_) for _ in active_ids]
+                    
+                    #? Filter reid dists with infeasible mahalanobis matching
                     reid_dists[~np.isfinite(costs[valid_inds, :])] = np.nan
+                    
+                    #? set reid dists to nan if above match score threshold
+                    reid_dists[reid_dists > self.reid['match_score_thr']] = np.nan
+                    
+                    #? Combine reid and motion costs
+                    final_cost = self.alpha * costs[valid_inds, :] + \
+                                (1-self.alpha) * reid_dists
 
-                    row, col = linear_sum_assignment(reid_dists)
+                    row, col = linear_sum_assignment(final_cost)    # linear_sum_assignment is a Hungarian algorithm
+                    # row, col are the rows and columns of the reid_dists matrix that are assigned to each other
+                    # row is the track index, col is the detection index
                     for r, c in zip(row, col):
-                        dist = reid_dists[r, c]
-                        if not np.isfinite(dist):
+                        cost = final_cost[r, c]
+                        if not np.isfinite(cost):
                             continue
-                        if dist <= self.reid['match_score_thr']:    #! modify score threshold 
-                            ids[c] = active_ids[r]
+                        ids[c] = active_ids[r]
 
             active_ids = [
                 id for id in self.ids if id not in ids
                 and self.tracks[id].frame_ids[-1] == frame_id - 1
             ]
+            
+            #? Final matching: Iou matching assignment
             if len(active_ids) > 0:
                 active_dets = torch.nonzero(ids == -1).squeeze(1)
                 track_bboxes = self.get('bboxes', active_ids)
