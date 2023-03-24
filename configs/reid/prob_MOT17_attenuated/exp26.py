@@ -11,7 +11,7 @@ total_epochs = 6    #* originally 6
 step = 5
 load_from = None
 resume_from = None
-batch_size = 1
+batch_size = 32
 iters_in_epoch = 70938  #* 70938 is the number of iterations in one epoch for MOT17 with batch size 1 and 1 GPU
 
 custom_hooks = [
@@ -50,7 +50,7 @@ model = dict(
                 '/home/misc/tracktor_reid_r50_iter25245-a452f51f.pth'  # noqa: E501
         )))
 # optimizer
-optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/1, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.1*num_gpus/8 * batch_size/32, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -67,18 +67,17 @@ log_config = dict(
         dict(type='TensorboardLoggerHook',
              log_dir="/home/results/"+exp_dir+"/tf_board",
              interval=50),
-        # dict(type='WandbLoggerHook',
-        #     init_kwargs={'name': exp_dir,
-        #                 'project': 'resnet_prob_reid_mot17',
-        #                  'dir': "/home/results/"+exp_dir,
-        #                  'sync_tensorboard': True,
-        #                 'config': {'lr': 0.1*num_gpus/8*batch_size/1, 'batch_size':batch_size*num_gpus},
-        #                 'notes': '',
-        #                 'resume': 'allow',   # set to must if need to resume; set id corresponding to run
-        #                 'mode': 'offline',
-        #                 'id': 'sv56jwmw'
-        #                 },
-        #     interval=50)
+        dict(type='WandbLoggerHook',
+            init_kwargs={'name': exp_dir,
+                        'project': 'resnet_prob_reid_mot17',
+                         'dir': "/home/results/"+exp_dir,
+                         'sync_tensorboard': True,
+                        'config': {'lr': 0.1*num_gpus/8*batch_size/32, 'batch_size':batch_size*num_gpus},
+                        'notes': '',
+                        'resume': 'allow',   # set to must if need to resume; set id corresponding to run
+                        # 'id': 'sv56jwmw'
+                        },
+            interval=50)
     ]
 )
 
