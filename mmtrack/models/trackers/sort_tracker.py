@@ -155,10 +155,14 @@ class SortTracker(BaseTracker):
                 dtype=torch.long)
             self.num_tracks += num_new_tracks
             if self.with_reid:
-                # breakpoint()
-                embeds, embed_log_covs, embed_covs = model.reid.simple_test(
+
+                reid_out = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
                                    rescale), prob=True if self.reid['prob'] else False)
+                if self.reid['prob']:
+                    embeds, embed_log_covs, embed_covs = reid_out
+                else:
+                    embeds = reid_out
         else:
             ids = torch.full((bboxes.size(0), ), -1, dtype=torch.long)
 
@@ -169,9 +173,13 @@ class SortTracker(BaseTracker):
 
             active_ids = self.confirmed_ids
             if self.with_reid:
-                embeds, embed_log_covs, embed_covs = model.reid.simple_test(
+                reid_out = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
                                    rescale), prob=True if self.reid['prob'] else False)
+                if self.reid['prob']:
+                    embeds, embed_log_covs, embed_covs = reid_out
+                else:
+                    embeds = reid_out
                 # reid
                 if len(active_ids) > 0:
                     track_embeds = self.get(
@@ -265,7 +273,7 @@ class SortTracker(BaseTracker):
             scores=bboxes[:, -1],
             labels=labels,
             embeds=embeds if self.with_reid else None,
-            embed_covs=embed_covs if self.with_reid else None,
-            embed_log_covs=embed_log_covs if self.with_reid else None,
+            embed_covs=embed_covs if self.with_reid and self.reid['prob'] else None,
+            embed_log_covs=embed_log_covs if self.with_reid and self.reid['prob'] else None,
             frame_ids=frame_id)
         return bboxes, labels, ids
