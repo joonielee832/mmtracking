@@ -37,15 +37,15 @@ model = dict(
             loss_attenuation=dict(attenuated=True, alpha=0.1, epoch_step=None, iters_in_epoch=None),
             loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
             loss_pairwise=dict(
-                type='TripletLoss', margin=0.3, loss_weight=1.0, prob=False, num_samples=100),
+                type='TripletKLDivLoss', margin=0.3, loss_weight=1.0, prob=False, num_samples=100),
             loss_uncertainty=dict(
-                type='FeatureUncertaintyLoss', margin_exp=1, loss_weight=0.001),
+                type='FeatureUncertaintyLoss', margin_exp=5, loss_weight=0.1),
             norm_cfg=dict(type='BN1d'),
             act_cfg=dict(type='ReLU')),
         init_cfg=dict(
             type='Pretrained',
             checkpoint=  # noqa: E251
-                '/home/results/prob_reid_mot17_train_exp21/latest.pth'  # noqa: E501
+                '/home/results/prob_reid_mot17_train_exp26/latest.pth'  # noqa: E501
         )),
     tracker=dict(
         type='SortTracker',

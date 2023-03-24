@@ -59,7 +59,7 @@ model = dict(
         match_iou_thr=0.5,
         momentums=None,
         num_tentatives=2,
-        alpha=0.1,
+        alpha=0.0,
         num_frames_retain=100))
 # learning policy
 lr_config = dict(
