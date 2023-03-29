@@ -5,7 +5,7 @@ _base_ = [
 ]
 
 #? Configurable settings per experiment
-num_gpus = 1
+num_gpus = 2
 total_epochs = 4
 step = total_epochs - 1
 exp_dir = "bayesod_mot17det_train_exp1"
@@ -44,17 +44,17 @@ log_config = dict(
         dict(type='TensorboardLoggerHook',
              log_dir="/home/results/"+exp_dir+"/tf_board",
              interval=50),
-        # dict(type='WandbLoggerHook',
-        #     init_kwargs={'name': exp_dir,
-        #                 'project': 'retinanet_mot17_det',
-        #                  'dir': "/home/results/"+exp_dir,
-        #                  'sync_tensorboard': True,
-        #                 'config': {'lr': 0.01*(num_gpus/8), 'batch_size':2*num_gpus},
-        #                 'notes': '',
-        #                 'resume': 'allow',   # set to must if need to resume; set id corresponding to run
-        #                 # 'id': 'nnknkq8u'
-        #                 },
-        #     interval=50)
+        dict(type='WandbLoggerHook',
+            init_kwargs={'name': exp_dir,
+                        'project': 'retinanet_mot17_det',
+                         'dir': "/home/results/"+exp_dir,
+                         'sync_tensorboard': True,
+                        'config': {'lr': 0.01*(num_gpus/8), 'batch_size':2*num_gpus},
+                        'notes': '',
+                        'resume': 'allow',   # set to must if need to resume; set id corresponding to run
+                        # 'id': 'nnknkq8u'
+                        },
+            interval=50)
     ])
 
 # learning policy
