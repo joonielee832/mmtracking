@@ -2,8 +2,8 @@
 from .image import crop_image
 from .misc import setup_multi_processes
 from .visualization import imshow_mot_errors, imshow_tracks
-from .distance import JSD, KLDiv
+from .distance import JSD, KLDiv, JRDiv
 
 __all__ = [
-    'crop_image', 'imshow_tracks', 'imshow_mot_errors', 'setup_multi_processes', 'JSD', 'KLDiv'
+    'crop_image', 'imshow_tracks', 'imshow_mot_errors', 'setup_multi_processes', 'JSD', 'KLDiv', 'JRDiv'
 ]

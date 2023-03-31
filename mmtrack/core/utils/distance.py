@@ -86,3 +86,40 @@ class KLDiv(nn.Module):
         trace = torch.exp(-log_sigma_q + log_sigma_p).sum()
         kldiv = 0.5 * (log_p_q + maha_dist - k + trace)
         return kldiv
+    
+class JRDiv(nn.Module):
+    """Calculate Jeffrey-Riemannian divergence between two Gaussian distributions with diagonal covariance matrices.
+    """
+    def __init__(self, beta=0.85) -> None:
+        super(JRDiv, self).__init__()
+        self.beta = beta
+    
+    def forward(self, mu_p: torch.tensor, 
+                log_sigma_p: torch.tensor, 
+                mu_q: torch.tensor, 
+                log_sigma_q: torch.tensor):
+        """Calculate Jeffrey-Riemannian divergence between two Gaussian distributions with diagonal covariance matrices.
+        Args:
+            mu_p (torch.tensor): _description_
+            log_sigma_p (torch.tensor): log of diagonal covariance matrix of distribution P
+            mu_q (torch.tensor): _description_
+            log_sigma_q (torch.tensor): log of diagonal covariance matrix of distribution Q
+
+        Returns:
+            float: JR Divergence scalar
+        """
+        shape_conditions = [log_sigma_p.shape == log_sigma_q.shape, mu_p.shape == mu_q.shape]
+        if not all(shape_conditions):
+            raise ValueError('Input shapes are not equal')
+        
+        #? Check if covariance diagonal
+        if len(log_sigma_p.shape) != 1:
+            raise NotImplementedError('JR divergence for non-diagonal covariance matrices is not implemented')
+
+        sigma_p_inv = torch.exp(-log_sigma_p)
+        sigma_q_inv = torch.exp(-log_sigma_q)
+        maha_dist = ((mu_q - mu_p) * (sigma_p_inv + sigma_q_inv)) @ (mu_q - mu_p)
+        maha_dist = maha_dist.clamp(min=1e-12).sqrt()
+        riemann_dist = torch.norm(-log_sigma_p + log_sigma_q)
+        
+        return (1 - self.beta) * maha_dist + self.beta * riemann_dist
