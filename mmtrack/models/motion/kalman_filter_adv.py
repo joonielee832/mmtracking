@@ -3,11 +3,12 @@ import numpy as np
 import scipy.linalg
 
 from ..builder import MOTION
+from .kalman_filter import KalmanFilter
 
 
 @MOTION.register_module()
-class KalmanFilter(object):
-    """A simple Kalman filter for tracking bounding boxes in image space.
+class KalmanFilterAdvanced(KalmanFilter):
+    """A Kalman filte with measurement noise for tracking bounding boxes in image space.
 
     The implementation is referred to https://github.com/nwojke/deep_sort.
     """
@@ -44,12 +45,13 @@ class KalmanFilter(object):
         self._std_weight_position = 1. / 20
         self._std_weight_velocity = 1. / 160
 
-    def initiate(self, measurement, **kwargs):
+    def initiate(self, measurement, bbox_cov):
         """Create track from unassociated measurement.
 
         Args:
             measurement (ndarray):  Bounding box coordinates (x, y, a, h) with
             center position (x, y), aspect ratio a, and height h.
+            measurement_covariance (ndarray): The 4x4 dimensional covariance
 
         Returns:
              (ndarray, ndarray): Returns the mean vector (8 dimensional) and
@@ -60,15 +62,14 @@ class KalmanFilter(object):
         mean_vel = np.zeros_like(mean_pos)
         mean = np.r_[mean_pos, mean_vel]
 
-        std = [
-            2 * self._std_weight_position * measurement[3],
-            2 * self._std_weight_position * measurement[3], 1e-2,
-            2 * self._std_weight_position * measurement[3],
+        std_vel = [
             10 * self._std_weight_velocity * measurement[3],
             10 * self._std_weight_velocity * measurement[3], 1e-5,
             10 * self._std_weight_velocity * measurement[3]
         ]
-        covariance = np.diag(np.square(std))
+        vel_covariance = np.diag(np.square(std_vel))
+        covariance = np.block([[bbox_cov, np.zeros_like(bbox_cov)],
+                               [np.zeros_like(bbox_cov), vel_covariance]])
         return mean, covariance
 
     def predict(self, mean, covariance):
@@ -104,31 +105,33 @@ class KalmanFilter(object):
 
         return mean, covariance
 
-    def project(self, mean, covariance):
+    def project(self, mean, covariance, measurement_cov, gating=False):
         """Project state distribution to measurement space.
 
         Args:
             mean (ndarray): The state's mean vector (8 dimensional array).
             covariance (ndarray): The state's covariance matrix (8x8
                 dimensional).
+            measurement_cov (ndarray): The measurement's covariance matrix (N, 4, 4)
+            gating (bool): Whether function is used for gating or not. (default: False)
 
         Returns:
             (ndarray, ndarray):  Returns the projected mean and covariance
             matrix of the given state estimate.
         """
-        std = [
-            self._std_weight_position * mean[3],
-            self._std_weight_position * mean[3], 1e-1,
-            self._std_weight_position * mean[3]
-        ]
-        innovation_cov = np.diag(np.square(std))
-
         mean = np.dot(self._update_mat, mean)
         covariance = np.linalg.multi_dot(
             (self._update_mat, covariance, self._update_mat.T))
-        return mean, covariance + innovation_cov
+        
+        if gating:
+            mean = np.tile(mean, (measurement_cov.shape[0], 1))
+            covariance = np.tile(covariance, (measurement_cov.shape[0], 1, 1))
+        # if not gating:
+        #     covariance += measurement_cov
+        covariance += measurement_cov
+        return mean, covariance
 
-    def update(self, mean, covariance, measurement, **kwargs):
+    def update(self, mean, covariance, measurement, measurement_cov):
         """Run Kalman filter correction step.
 
         Args:
@@ -144,7 +147,7 @@ class KalmanFilter(object):
              (ndarray, ndarray): Returns the measurement-corrected state
              distribution.
         """
-        projected_mean, projected_cov = self.project(mean, covariance)
+        projected_mean, projected_cov = self.project(mean, covariance, measurement_cov)
 
         chol_factor, lower = scipy.linalg.cho_factor(
             projected_cov, lower=True, check_finite=False)
@@ -163,6 +166,7 @@ class KalmanFilter(object):
                         mean,
                         covariance,
                         measurements,
+                        measurement_cov,
                         only_position=False):
         """Compute gating distance between state distribution and measurements.
 
@@ -188,10 +192,12 @@ class KalmanFilter(object):
             contains the squared Mahalanobis distance between
             (mean, covariance) and `measurements[i]`.
         """
-        mean, covariance = self.project(mean, covariance)
+        measurement_cov = np.mean(measurement_cov, axis=0)
+        mean, covariance = self.project(mean, covariance, measurement_cov, gating=False)
         if only_position:
-            mean, covariance = mean[:2], covariance[:2, :2]
+            mean = mean[:2]
             measurements = measurements[:, :2]
+            covariance = covariance[:, :2, :2]
 
         cholesky_factor = np.linalg.cholesky(covariance)
         d = measurements - mean
@@ -203,8 +209,46 @@ class KalmanFilter(object):
             overwrite_b=True)
         squared_maha = np.sum(z * z, axis=0)
         return squared_maha
+        projected_means, projected_covs = self.project(mean, covariance, measurement_cov, gating=True)
 
-    def track(self, tracks, bboxes, **kwargs):
+        if only_position:
+            projected_means = projected_means[:, :2]
+            projected_covs = projected_covs[:, :2, :2]
+            measurements = measurements[:, :2]
+
+        cholesky_factors = np.linalg.cholesky(projected_covs)
+        d = measurements - projected_means
+        z = np.linalg.solve(cholesky_factors.transpose(0, 2, 1), d[..., np.newaxis]).squeeze(-1)
+        
+        #*-------------------------------------------------------------------------------------
+        
+        # # Normalize the covariance matrices by their trace
+        # normalized_projected_covs = projected_covs / np.trace(projected_covs, axis1=1, axis2=2)[:, np.newaxis, np.newaxis]
+
+        # # Calculate the average normalized covariance
+        # average_normalized_covariance = np.mean(normalized_projected_covs, axis=0)
+
+        # # Calculate the trace of the average normalized covariance
+        # trace_avg_normalized_cov = np.trace(average_normalized_covariance)
+        
+        # normalization_factor = (1+trace_avg_normalized_cov)
+        
+        #*-------------------------------------------------------------------------------------
+        
+        # # Calculate the average projected covariance of the measurements
+        # average_projected_covariance = np.mean(projected_covs, axis=0)
+
+        # # Calculate the normalization factor based on the average projected covariance
+        # normalization_factor = np.linalg.det(average_projected_covariance) ** 0.25
+        
+        #*-------------------------------------------------------------------------------------
+        # normalization_factor = 1
+        
+        # squared_mahas = np.sum(z * z, axis=-1) / normalization_factor
+
+        return squared_mahas
+
+    def track(self, tracks, bboxes, bbox_covs):
         """Track forward.
 
         Args:
@@ -218,9 +262,11 @@ class KalmanFilter(object):
         for id, track in tracks.items():
             track.mean, track.covariance = self.predict(
                 track.mean, track.covariance)
+            #TODO: could change mahalanobis distance to JR Divergence
             gating_distance = self.gating_distance(track.mean,
                                                    track.covariance,
                                                    bboxes.cpu().numpy(),
+                                                   bbox_covs.cpu().numpy(),
                                                    self.center_only)
             costs.append(gating_distance)
 
