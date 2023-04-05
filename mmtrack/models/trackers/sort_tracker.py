@@ -187,7 +187,7 @@ class SortTracker(BaseTracker):
             if model.with_motion:
                 self.tracks, costs = model.motion.track(
                     self.tracks, bbox_xyxy_to_cxcyah(bboxes), 
-                    bbox_cov_xyxy_to_cxcyah(bbox_covs) if bbox_covs is not None else None)
+                    bbox_covs=bbox_cov_xyxy_to_cxcyah(bbox_covs) if bbox_covs is not None else None)
 
             active_ids = self.confirmed_ids
             if self.with_reid:
