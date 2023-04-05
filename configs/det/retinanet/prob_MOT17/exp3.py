@@ -8,11 +8,12 @@ data = dict(
     test=dict(ann_file=data_root + 'annotations/train_cocoformat.json'))
 device = 'cuda'
 
-num_gpus = 2
+num_gpus = 4
 total_epochs = 4
 step = total_epochs - 1
 exp_dir = "bayesod_mot17det_train_exp3"
 iters_in_epoch = 7974
+lr_factor = 0.25
 
 model = dict(
     detector=dict(
@@ -34,7 +35,7 @@ model = dict(
     )
 )
 
-optimizer = dict(type='SGD', lr=0.01*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01*lr_factor*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
 log_config = dict(
     interval=50,
@@ -55,3 +56,11 @@ log_config = dict(
                         },
             interval=50)
     ])
+
+# learning policy
+lr_config = dict(
+    policy='step',
+    warmup='linear',
+    warmup_iters=100,
+    warmup_ratio=0.01*lr_factor*(num_gpus/8),
+    step=[step])
