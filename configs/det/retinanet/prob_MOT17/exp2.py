@@ -5,11 +5,12 @@ _base_ = [
 ]
 
 #? Configurable settings per experiment
-num_gpus = 2
+num_gpus = 4
 total_epochs = 8
 step = 3
 exp_dir = "bayesod_mot17det_train_exp2"
 iters_in_epoch = 3996  #* 3996 is the number of iterations in one epoch for MOT17 with batch size 2 and 1 GPU
+lr_factor = 0.5
 
 custom_hooks = [
     dict(type='EpochHook')
@@ -34,7 +35,7 @@ model = dict(
     )
 )
 
-optimizer = dict(type='SGD', lr=0.01*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01*lr_factor*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
 
 log_config = dict(
@@ -62,7 +63,7 @@ lr_config = dict(
     policy='step',
     warmup='linear',
     warmup_iters=100,
-    warmup_ratio=0.01*(num_gpus/8),
+    warmup_ratio=0.01*lr_factor*(num_gpus/8),
     step=[step])
 
 device = 'cuda'
