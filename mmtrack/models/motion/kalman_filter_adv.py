@@ -1,14 +1,26 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
+import torch
 import scipy.linalg
 
+from mmtrack.core.utils import KLDiv, JRDiv, Mahalanobis
 from ..builder import MOTION
 from .kalman_filter import KalmanFilter
 
+def full2diagonal(cov):
+    """Convert full covariance matrix to diagonal covariance matrix.
 
+    Args:
+        cov (ndarray): The full covariance matrix (kxk dimensional).
+
+    Returns:
+        (ndarray): The diagonal covariance matrix (kxk dimensional).
+    """
+    cov = np.diag(np.diag(cov))
+    return cov
 @MOTION.register_module()
 class KalmanFilterAdvanced(KalmanFilter):
-    """A Kalman filte with measurement noise for tracking bounding boxes in image space.
+    """A Kalman filter with measurement noise for tracking bounding boxes in image space.
 
     The implementation is referred to https://github.com/nwojke/deep_sort.
     """
@@ -24,7 +36,7 @@ class KalmanFilterAdvanced(KalmanFilter):
         9: 16.919
     }
 
-    def __init__(self, center_only=False):
+    def __init__(self, mode="full", center_only=False, distance="mahalanobis", threshold=None, scale_gating=None):
         self.center_only = center_only
         if self.center_only:
             self.gating_threshold = self.chi2inv95[2]
@@ -38,12 +50,28 @@ class KalmanFilterAdvanced(KalmanFilter):
         for i in range(ndim):
             self._motion_mat[i, ndim + i] = dt
         self._update_mat = np.eye(ndim, 2 * ndim)
+        
+        #* Use diagonal vs full covariance matrix for incoming measurements
+        self.mode = mode
 
         # Motion and observation uncertainty are chosen relative to the current
         # state estimate. These weights control the amount of uncertainty in
         # the model. This is a bit hacky.
         self._std_weight_position = 1. / 20
         self._std_weight_velocity = 1. / 160
+        
+        self.scale_gating = scale_gating
+        self.distance = distance
+        if distance == "KL":
+            self.distance_fn = KLDiv(mode="full")
+            if threshold is not None:
+                self.gating_threshold = threshold
+        elif distance == "JR":
+            self.distance_fn = JRDiv(mode="full")
+            if threshold is not None:
+                self.gating_threshold = threshold
+        else:
+            self.distance_fn = Mahalanobis()
 
     def initiate(self, measurement, bbox_cov):
         """Create track from unassociated measurement.
@@ -68,6 +96,10 @@ class KalmanFilterAdvanced(KalmanFilter):
             10 * self._std_weight_velocity * measurement[3]
         ]
         vel_covariance = np.diag(np.square(std_vel))
+        
+        #? Convert bbox_cov to diagonal covariance matrix if mode is diagonal
+        bbox_cov = full2diagonal(bbox_cov) if self.mode == "diagonal" else bbox_cov
+        
         covariance = np.block([[bbox_cov, np.zeros_like(bbox_cov)],
                                [np.zeros_like(bbox_cov), vel_covariance]])
         return mean, covariance
@@ -126,8 +158,7 @@ class KalmanFilterAdvanced(KalmanFilter):
         if gating:
             mean = np.tile(mean, (measurement_cov.shape[0], 1))
             covariance = np.tile(covariance, (measurement_cov.shape[0], 1, 1))
-        # if not gating:
-        #     covariance += measurement_cov
+
         covariance += measurement_cov
         return mean, covariance
 
@@ -147,6 +178,8 @@ class KalmanFilterAdvanced(KalmanFilter):
              (ndarray, ndarray): Returns the measurement-corrected state
              distribution.
         """
+        #? Convert measurement_cov to diagonal covariance matrix if mode is diagonal
+        measurement_cov = full2diagonal(measurement_cov) if self.mode == "diagonal" else measurement_cov
         projected_mean, projected_cov = self.project(mean, covariance, measurement_cov)
 
         chol_factor, lower = scipy.linalg.cho_factor(
@@ -189,64 +222,42 @@ class KalmanFilterAdvanced(KalmanFilter):
 
         Returns:
             ndarray: Returns an array of length N, where the i-th element
-            contains the squared Mahalanobis distance between
-            (mean, covariance) and `measurements[i]`.
+            contains the distance between (mean, covariance) and `measurements[i]`.
         """
-        measurement_cov = np.mean(measurement_cov, axis=0)
-        mean, covariance = self.project(mean, covariance, measurement_cov, gating=False)
-        if only_position:
-            mean = mean[:2]
-            measurements = measurements[:, :2]
-            covariance = covariance[:, :2, :2]
-
-        cholesky_factor = np.linalg.cholesky(covariance)
-        d = measurements - mean
-        z = scipy.linalg.solve_triangular(
-            cholesky_factor,
-            d.T,
-            lower=True,
-            check_finite=False,
-            overwrite_b=True)
-        squared_maha = np.sum(z * z, axis=0)
-        return squared_maha
         projected_means, projected_covs = self.project(mean, covariance, measurement_cov, gating=True)
 
         if only_position:
-            projected_means = projected_means[:, :2]
-            projected_covs = projected_covs[:, :2, :2]
-            measurements = measurements[:, :2]
+            # projected_means = projected_means[:, :2]
+            # projected_covs = projected_covs[:, :2, :2]
+            # measurements = measurements[:, :2]
+            raise NotImplementedError
 
-        cholesky_factors = np.linalg.cholesky(projected_covs)
-        d = measurements - projected_means
-        z = np.linalg.solve(cholesky_factors.transpose(0, 2, 1), d[..., np.newaxis]).squeeze(-1)
-        
-        #*-------------------------------------------------------------------------------------
-        
-        # # Normalize the covariance matrices by their trace
-        # normalized_projected_covs = projected_covs / np.trace(projected_covs, axis1=1, axis2=2)[:, np.newaxis, np.newaxis]
+        distance = self.distance_fn(projected_means,
+                                 projected_covs,
+                                 measurements,
+                                 measurement_cov)
 
-        # # Calculate the average normalized covariance
-        # average_normalized_covariance = np.mean(normalized_projected_covs, axis=0)
+        # if self.scale_gating is not None:
+        #     if not isinstance(self.scale_gating, dict):
+        #         raise TypeError("normalize must be a dict")
+        #     if not hasattr(self.scale_gating, "type"):
+        #         raise ValueError("normalize must have a type key")
+        #     if self.scale_gating["type"] == "trace":
+        #         # Normalize the covariance matrices by their trace
+        #         normalized_projected_covs = projected_covs / np.trace(projected_covs, axis1=1, axis2=2)[:, np.newaxis, np.newaxis]
 
-        # # Calculate the trace of the average normalized covariance
-        # trace_avg_normalized_cov = np.trace(average_normalized_covariance)
-        
-        # normalization_factor = (1+trace_avg_normalized_cov)
-        
-        #*-------------------------------------------------------------------------------------
-        
-        # # Calculate the average projected covariance of the measurements
-        # average_projected_covariance = np.mean(projected_covs, axis=0)
+        #         # Calculate the average normalized covariance
+        #         average_normalized_covariance = np.mean(normalized_projected_covs, axis=0)
 
-        # # Calculate the normalization factor based on the average projected covariance
-        # normalization_factor = np.linalg.det(average_projected_covariance) ** 0.25
-        
-        #*-------------------------------------------------------------------------------------
-        # normalization_factor = 1
-        
-        # squared_mahas = np.sum(z * z, axis=-1) / normalization_factor
-
-        return squared_mahas
+        #         # Calculate the trace of the average normalized covariance
+        #         trace_avg_normalized_cov = np.trace(average_normalized_covariance)
+        #         normalization_factor = 1/(1+trace_avg_normalized_cov)
+        #         squared_mahas = squared_mahas * normalization_factor
+        #     elif self.scale_gating["type"] == "det":
+        #         power = self.scale_gating.get("power", 0.10)
+        #         projected_cov_det = np.linalg.det(projected_covs)
+        #         squared_mahas = squared_mahas * np.power(projected_cov_det, power)
+        return distance
 
     def track(self, tracks, bboxes, bbox_covs):
         """Track forward.
@@ -259,15 +270,17 @@ class KalmanFilterAdvanced(KalmanFilter):
             (dict[int:dict], Tensor): Updated tracks and bboxes.
         """
         costs = []
+        #? Convert bbox_covs to diagonal covariance matrices if mode is diagonal
+        bbox_covs = torch.diag_embed(torch.diagonal(bbox_covs,dim1=1,dim2=2)) if self.mode == "diagonal" else bbox_covs
+        
         for id, track in tracks.items():
             track.mean, track.covariance = self.predict(
                 track.mean, track.covariance)
-            #TODO: could change mahalanobis distance to JR Divergence
             gating_distance = self.gating_distance(track.mean,
-                                                   track.covariance,
-                                                   bboxes.cpu().numpy(),
-                                                   bbox_covs.cpu().numpy(),
-                                                   self.center_only)
+                                                    track.covariance,
+                                                    bboxes.cpu().numpy(),
+                                                    bbox_covs.cpu().numpy(),
+                                                    only_position=self.center_only)
             costs.append(gating_distance)
 
         costs = np.stack(costs, 0)
