@@ -36,7 +36,7 @@ model = dict(
 )
 
 optimizer = dict(type='SGD', lr=0.01*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
-evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
+# evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
 
 log_config = dict(
     interval=50,

@@ -14,7 +14,7 @@ model = dict(
             bbox_coder=dict(clip_border=False), 
             num_classes=1,
             use_pos_mask=False,
-            with_nms=True,
+            with_nms=False,
             epoch_step=step-1,
             iters_in_epoch=iters_in_epoch/(num_gpus),
             loss_cls=dict(attenuated=True),
@@ -28,7 +28,7 @@ model = dict(
 )
 
 optimizer = dict(type='SGD', lr=0.01*lr_factor*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
-evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
+evaluation = dict(metric=['bbox'], interval=1)
 log_config = dict(
     interval=50,
     hooks=[
