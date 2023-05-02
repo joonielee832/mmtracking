@@ -6,7 +6,7 @@ from mmdet.core import bbox_overlaps
 from motmetrics.lap import linear_sum_assignment
 
 from mmtrack.core import imrenormalize
-from mmtrack.core.bbox import bbox_xyxy_to_cxcyah
+from mmtrack.core.bbox import bbox_xyxy_to_cxcyah, bbox_cov_xyxy_to_cxcyah
 from mmtrack.models import TRACKERS
 from mmtrack.core.utils import JSD, KLDiv
 from .base_tracker import BaseTracker
@@ -75,8 +75,15 @@ class SortTracker(BaseTracker):
         bbox = bbox_xyxy_to_cxcyah(self.tracks[id].bboxes[-1])  # size = (1, 4)
         assert bbox.ndim == 2 and bbox.shape[0] == 1
         bbox = bbox.squeeze(0).cpu().numpy()
+        bbox_cov = self.tracks[id].bbox_covs[-1]
+        if isinstance(bbox_cov, torch.Tensor):
+            #? convert bbox_cov to cxcyah cov
+            bbox_cov = bbox_cov_xyxy_to_cxcyah(bbox_cov)   # size = (1, 4, 4)
+            bbox_cov = bbox_cov.squeeze(0).cpu().numpy()
+        else:
+            bbox_cov = None
         self.tracks[id].mean, self.tracks[id].covariance = self.kf.initiate(
-            bbox)
+            bbox, bbox_cov=bbox_cov)
 
     def update_track(self, id, obj):
         """Update a track."""
@@ -87,8 +94,15 @@ class SortTracker(BaseTracker):
         bbox = bbox_xyxy_to_cxcyah(self.tracks[id].bboxes[-1])  # size = (1, 4)
         assert bbox.ndim == 2 and bbox.shape[0] == 1
         bbox = bbox.squeeze(0).cpu().numpy()
+        bbox_cov = self.tracks[id].bbox_covs[-1]
+        if isinstance(bbox_cov, torch.Tensor):
+            #? convert bbox_cov to cxcyah cov
+            bbox_cov = bbox_cov_xyxy_to_cxcyah(bbox_cov)   # size = (1, 4, 4)
+            bbox_cov = bbox_cov.squeeze(0).cpu().numpy()
+        else:
+            bbox_cov = None
         self.tracks[id].mean, self.tracks[id].covariance = self.kf.update(
-            self.tracks[id].mean, self.tracks[id].covariance, bbox)
+            self.tracks[id].mean, self.tracks[id].covariance, bbox, measurement_cov=bbox_cov)
 
     def pop_invalid_tracks(self, frame_id):
         """Pop out invalid tracks."""
@@ -109,6 +123,7 @@ class SortTracker(BaseTracker):
               img_metas,
               model,
               bboxes,
+              bbox_covs,
               labels,
               frame_id,
               rescale=False,
@@ -123,6 +138,7 @@ class SortTracker(BaseTracker):
                 'filename', 'ori_shape', 'pad_shape', and 'img_norm_cfg'.
             model (nn.Module): MOT model.
             bboxes (Tensor): of shape (N, 5).
+            bbox_covs (Tensor): diagonal bbox covariance of shape (N, 4).
             labels (Tensor): of shape (N, ).
             frame_id (int): The id of current frame, 0-index.
             rescale (bool, optional): If True, the bounding boxes should be
@@ -145,6 +161,8 @@ class SortTracker(BaseTracker):
         valid_inds = bboxes[:, -1] > self.obj_score_thr
         bboxes = bboxes[valid_inds]
         labels = labels[valid_inds]
+        if bbox_covs is not None:
+            bbox_covs = bbox_covs[valid_inds]
 
         #? Iteration 0: start new tracks
         if self.empty or bboxes.size(0) == 0:
@@ -155,7 +173,6 @@ class SortTracker(BaseTracker):
                 dtype=torch.long)
             self.num_tracks += num_new_tracks
             if self.with_reid:
-
                 reid_out = model.reid.simple_test(
                     self.crop_imgs(reid_img, img_metas, bboxes[:, :4].clone(),
                                    rescale), prob=True if self.reid['prob'] else False)
@@ -169,7 +186,8 @@ class SortTracker(BaseTracker):
             # motion
             if model.with_motion:
                 self.tracks, costs = model.motion.track(
-                    self.tracks, bbox_xyxy_to_cxcyah(bboxes))
+                    self.tracks, bbox_xyxy_to_cxcyah(bboxes), 
+                    bbox_covs=bbox_cov_xyxy_to_cxcyah(bbox_covs) if bbox_covs is not None else None)
 
             active_ids = self.confirmed_ids
             if self.with_reid:
@@ -215,11 +233,11 @@ class SortTracker(BaseTracker):
                             embed_dist = torch.cdist(track_embeds,embeds)
                             embed_cov_dist = torch.cdist(track_embed_covs,embed_covs)
                             reid_dists = embed_dist + embed_cov_dist
-                            #TODO: need to change the distance threshold if this is used
+
                     else:
                         reid_dists = torch.cdist(track_embeds,embeds)
                     reid_dists = reid_dists.cpu().numpy()
-                    #TODO::--------------------------------
+
 
                     valid_inds = [list(self.ids).index(_) for _ in active_ids]
                     
@@ -270,6 +288,7 @@ class SortTracker(BaseTracker):
         self.update(
             ids=ids,
             bboxes=bboxes[:, :4],
+            bbox_covs=bbox_covs,
             scores=bboxes[:, -1],
             labels=labels,
             embeds=embeds if self.with_reid else None,

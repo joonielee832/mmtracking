@@ -82,6 +82,41 @@ def bbox_xyxy_to_cxcyah(bboxes):
     xyah = torch.stack([cx, cy, w / h, h], -1)
     return xyah
 
+def bbox_cov_xyxy_to_cxcyah(cov_xyxy):
+    """Convert covariance matrices of bbox coordinates from (x1, y1, x2, y2) to (cx, cy, a, h).
+
+    Args:
+        cov_xyxy (Tensor): Shape (n, 4, 4) for covariance matrices in (x1, y1, x2, y2) format.
+
+    Returns:
+        Tensor: Converted covariance matrices in (cx, cy, a, h) format.
+    """
+    n = cov_xyxy.shape[0]
+    
+    # Derivatives of cx, cy, a, h with respect to x1, y1, x2, y2
+    d_cx_x1 = 0.5
+    d_cx_x2 = 0.5
+    d_cy_y1 = 0.5
+    d_cy_y2 = 0.5
+    
+    d_a_x1 = 0.5
+    d_a_x2 = -0.5
+    d_h_y1 = 0.5
+    d_h_y2 = -0.5
+    
+    # Jacobian matrix (shape: n, 4, 4)
+    J = torch.tensor([
+        [d_cx_x1, 0, d_cx_x2, 0],
+        [0, d_cy_y1, 0, d_cy_y2],
+        [d_a_x1, 0, d_a_x2, 0],
+        [0, d_h_y1, 0, d_h_y2],
+    ], dtype=cov_xyxy.dtype, device=cov_xyxy.device).unsqueeze(0).expand(n, -1, -1)
+    
+    # Covariance matrix conversion using Jacobian: cov_cxcyah = J * cov_xyxy * J^T
+    cov_cxcyah = torch.matmul(torch.matmul(J, cov_xyxy), J.transpose(-1, -2))
+    
+    return cov_cxcyah
+
 
 def bbox_cxcyah_to_xyxy(bboxes):
     """Convert bbox coordinates from (cx, cy, ratio, h) to (x1, y1, x2, y2).

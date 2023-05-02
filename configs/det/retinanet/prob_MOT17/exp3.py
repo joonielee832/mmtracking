@@ -1,19 +1,19 @@
 USE_MMDET = True
-_base_ = [
-    '../../../_base_/models/bayesod_r50_fpn.py',
-    '../../../_base_/datasets/mot_challenge_det.py', '../../../_base_/default_runtime.py'
-]
+_base_ = ['./exp1.py']
+# data
+data_root = '/home/data/MOT17/'
+data = dict(
+    train=dict(ann_file=data_root + 'annotations/train_cocoformat.json'),
+    val=dict(ann_file=data_root + 'annotations/train_cocoformat.json'),
+    test=dict(ann_file=data_root + 'annotations/train_cocoformat.json'))
+device = 'cuda'
 
-#? Configurable settings per experiment
-num_gpus = 2
+num_gpus = 4
 total_epochs = 4
 step = total_epochs - 1
-exp_dir = "bayesod_mot17det_train_exp1"
-iters_in_epoch = 3996  #* 3996 is the number of iterations in one epoch for MOT17 with batch size 2 and 1 GPU
-
-custom_hooks = [
-    dict(type='EpochHook')
-]
+exp_dir = "bayesod_mot17det_train_exp3"
+iters_in_epoch = 7974
+lr_factor = 0.25
 
 model = dict(
     detector=dict(
@@ -35,9 +35,8 @@ model = dict(
     )
 )
 
-optimizer = dict(type='SGD', lr=0.01*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01*lr_factor*(num_gpus/8), momentum=0.9, weight_decay=0.0001)
 evaluation = dict(metric=['bbox'], interval=1, out_dir="/home/results/"+exp_dir, save_best="bbox_mAP")
-
 log_config = dict(
     interval=50,
     hooks=[
@@ -63,7 +62,5 @@ lr_config = dict(
     policy='step',
     warmup='linear',
     warmup_iters=100,
-    warmup_ratio=0.01*(num_gpus/8),
-    step=[total_epochs-1])
-
-device = 'cuda'
+    warmup_ratio=0.01*lr_factor*(num_gpus/8),
+    step=[step])

@@ -101,7 +101,7 @@ class DeepSORT(BaseMultiObjectTracker):
                 proposals,
                 self.detector.roi_head.test_cfg,
                 rescale=rescale)
-            # TODO: support batch inference
+
             det_bboxes = det_bboxes[0]
             det_labels = det_labels[0]
             num_classes = self.detector.roi_head.bbox_head.num_classes
@@ -109,9 +109,16 @@ class DeepSORT(BaseMultiObjectTracker):
             outs = self.detector.bbox_head(x)
             result_list = self.detector.bbox_head.get_bboxes(
                 *outs, img_metas=img_metas, rescale=rescale)
-            # TODO: support batch inference
-            det_bboxes = result_list[0][0]
-            det_labels = result_list[0][1]
+
+            if len(result_list[0]) == 3:
+                #? Covariance is in output
+                det_bboxes = result_list[0][0]
+                det_bbox_covs = result_list[0][1]
+                det_labels = result_list[0][2]
+            else:
+                det_bboxes = result_list[0][0]
+                det_bbox_covs = None
+                det_labels = result_list[0][1]
             num_classes = self.detector.bbox_head.num_classes
         else:
             raise TypeError('detector must has roi_head or bbox_head.')
@@ -122,9 +129,10 @@ class DeepSORT(BaseMultiObjectTracker):
             model=self,
             feats=x,
             bboxes=det_bboxes,
+            bbox_covs=det_bbox_covs,
             labels=det_labels,
             frame_id=frame_id,
-            rescale=rescale,
+            rescale=rescale,    # true
             **kwargs)
 
         track_results = outs2results(
