@@ -8,7 +8,7 @@ from motmetrics.lap import linear_sum_assignment
 from mmtrack.core import imrenormalize
 from mmtrack.core.bbox import bbox_xyxy_to_cxcyah, bbox_cov_xyxy_to_cxcyah
 from mmtrack.models import TRACKERS
-from mmtrack.core.utils import JSD, KLDiv
+from mmtrack.core.utils import JSD, KLDiv, JRDiv
 from .base_tracker import BaseTracker
 
 
@@ -55,12 +55,14 @@ class SortTracker(BaseTracker):
         self.match_iou_thr = match_iou_thr
         self.num_tentatives = num_tentatives
         self.alpha = alpha
-        
+        # breakpoint()
         if self.reid['prob']:
             if self.reid['prob']['mode'] == 'Jensen':
                 self.jsd = JSD(num_samples=self.reid['prob']['num_samples'])
-            else:
+            elif self.reid['prob']['mode'] == 'KL':
                 self.kl = KLDiv()
+            else:
+                self.jr = JRDiv()
 
     @property
     def confirmed_ids(self):
@@ -219,28 +221,33 @@ class SortTracker(BaseTracker):
                             behavior='mean')
                         num_tracks = track_embeds.size(0)
                         num_embeds = embeds.size(0)
+                        reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
                         if self.reid['prob']['mode'] == 'Jensen':
-                            reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
                             for i in range(num_tracks):
                                 for j in range (num_embeds):
                                     reid_dists[i][j] = self.jsd(track_embeds[i], track_embed_covs[i], embeds[j], embed_covs[j])
                         elif self.reid['prob']['mode'] == 'KL':
-                            reid_dists = torch.zeros((num_tracks, num_embeds), dtype=torch.float16, device=embeds.device)
                             for i in range(num_tracks):
                                 for j in range (num_embeds):
                                     reid_dists[i][j] = self.kl(track_embeds[i], track_embed_log_covs[i], embeds[j], embed_log_covs[j])
+                        elif self.reid['prob']['mode'] == 'JR':
+                            # breakpoint()
+                            for i in range(num_tracks):
+                                # breakpoint()
+                                # for j in range (num_embeds):
+                                reid_dists[i] = self.jr(track_embeds[i].unsqueeze(0), track_embed_covs[i].unsqueeze(0), embeds, embed_covs)
                         else:
                             embed_dist = torch.cdist(track_embeds,embeds)
                             embed_cov_dist = torch.cdist(track_embed_covs,embed_covs)
                             reid_dists = embed_dist + embed_cov_dist
 
                     else:
+                        # breakpoint()
                         reid_dists = torch.cdist(track_embeds,embeds)
                     reid_dists = reid_dists.cpu().numpy()
 
-
                     valid_inds = [list(self.ids).index(_) for _ in active_ids]
-                    
+                    # breakpoint()
                     #? Filter reid dists with infeasible mahalanobis matching
                     reid_dists[~np.isfinite(costs[valid_inds, :])] = np.nan
                     

@@ -8,6 +8,7 @@ from mmcls.models.heads.base_head import BaseHead
 from mmcls.models.losses import Accuracy
 from mmcv.runner import auto_fp16, force_fp32
 from mmdet.models.builder import build_loss
+from mmdet.core.utils import compute_mean_covariance_torch
 from mmcv.cnn.utils import kaiming_init
 
 from .fc_module import FcModule
@@ -126,6 +127,20 @@ class ProbabilisticReIDHead(BaseHead):
         if self.loss_cls:
             self.bn = nn.BatchNorm1d(self.out_channels)
             self.classifier = nn.Linear(self.out_channels, self.num_classes)
+    
+    def post_process(self, feats, feats_cov):
+        std = torch.sqrt(feats_cov)
+        predicted_cov_chol = torch.diag_embed(std)
+        
+        #? Monte-Carlo sampling
+        mvn = torch.distributions.MultivariateNormal(
+            feats, scale_tril=predicted_cov_chol)
+        samples = mvn.rsample((100,)).permute(1,2,0)
+        
+        feats, feats_cov = compute_mean_covariance_torch(samples)
+        feats_cov = torch.diagonal(feats_cov, dim1=1, dim2=2)
+        feats_logcov = torch.log(feats_cov)
+        return feats, feats_logcov, feats_cov
 
     @auto_fp16()
     def forward_train(self, x):
@@ -147,8 +162,9 @@ class ProbabilisticReIDHead(BaseHead):
             feat_samples = torch.unsqueeze(feats, 1) + torch.mul(standard_norm, torch.unsqueeze(feats_cov, 1))
             
             cls_sample_score = self.classifier(self.bn(feat_samples.reshape(-1, feat_dim)))
-            
+            # feats, feats_logcov, feats_cov = self.post_process(feats, feats_cov)
             return (feats, feats_logcov, feats_cov, cls_score, cls_sample_score)
+        # feats, feats_logcov, feats_cov = self.post_process(self, feats, feats_cov)
         return (feats, feats_logcov, feats_cov)
 
     @force_fp32(apply_to=('feats', 'feats_logcov', 'feats_cov', 'cls_score', 'cls_sample_score'))

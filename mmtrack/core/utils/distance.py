@@ -193,24 +193,39 @@ class JRDiv(nn.Module):
             float: JR Divergence scalar
         """
         #? Check if covariance diagonal
-        if len(log_sigma_p.shape) != 1:
-            raise NotImplementedError('JR divergence for non-diagonal covariance matrices is not implemented')
+        # if len(log_sigma_p.shape) != 1:
+        #     raise NotImplementedError('JR divergence for non-diagonal covariance matrices is not implemented')
 
+        # sigma_p_inv = torch.exp(-log_sigma_p)
+        # sigma_q_inv = torch.exp(-log_sigma_q)
+        # maha_dist = ((mu_q - mu_p) * (sigma_p_inv + sigma_q_inv)) @ (mu_q - mu_p)
+        # maha_dist = maha_dist.clamp(min=1e-12).sqrt()
+        # riemann_dist = torch.norm(-log_sigma_p + log_sigma_q)
+        
+        # return (1 - self.beta) * maha_dist + self.beta * riemann_dist
+        #? Compute the residual
+        residual = mu_q - mu_p
         sigma_p_inv = torch.exp(-log_sigma_p)
         sigma_q_inv = torch.exp(-log_sigma_q)
-        maha_dist = ((mu_q - mu_p) * (sigma_p_inv + sigma_q_inv)) @ (mu_q - mu_p)
+        
+        #? Compute the first term in JR divergence
+        maha_dist = torch.einsum('bi, bi -> b', residual * (sigma_p_inv + sigma_q_inv), residual)
         maha_dist = maha_dist.clamp(min=1e-12).sqrt()
+        
+        #? Compute the second term in JR divergence
         riemann_dist = torch.norm(-log_sigma_p + log_sigma_q)
         
-        return (1 - self.beta) * maha_dist + self.beta * riemann_dist
+        #? Compute JR divergence
+        jr = (1 - self.beta) * maha_dist + self.beta * riemann_dist
+        return jr
     
     def forward(self, mu_p: torch.tensor, 
                 sigma_p: torch.tensor, 
                 mu_q: torch.tensor, 
                 sigma_q: torch.tensor):
-        shape_conditions = [sigma_p.shape == sigma_q.shape, mu_p.shape == mu_q.shape]
-        if not all(shape_conditions):
-            raise ValueError('Input shapes are not equal')
+        # shape_conditions = [sigma_p.shape == sigma_q.shape, mu_p.shape == mu_q.shape]
+        # if not all(shape_conditions):
+        #     raise ValueError('Input shapes are not equal')
         
         if self.mode == "diagonal":
             return self.forward_diag(mu_p, sigma_p, mu_q, sigma_q)

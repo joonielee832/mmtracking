@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from mmcls.models import ImageClassifier
 from mmcv.runner import auto_fp16
+import torch
 
 from ..builder import REID
 
@@ -28,6 +29,7 @@ class BaseReID(ImageClassifier):
     @auto_fp16(apply_to=('img', ), out_fp32=True)
     def simple_test(self, img, prob=False, **kwargs):
         """Test without augmentation."""
+        # breakpoint()
         if img.nelement() > 0:
             x = self.extract_feat(img)
             if prob:
@@ -37,6 +39,12 @@ class BaseReID(ImageClassifier):
             else:
                 head_outputs = self.head.forward_train(x[0])
                 feats = head_outputs[0]
-                return feats
+                feats_cov = head_outputs[2]
+                trace = feats_cov.sum()
+                return feats, trace
         else:
-            return img.new_zeros(0, self.head.out_channels)
+            feat = img.new_zeros(0, self.head.out_channels)
+            feat_cov = torch.ones_like(feat) * 0.01
+            feats_logcov = torch.log(feat_cov)
+            return img.new_zeros(0, self.head.out_channels), \
+                feats_logcov, feat_cov

@@ -7,7 +7,7 @@ import warnings
 from itertools import repeat
 
 import cv2
-
+import torch
 
 def setup_multi_processes(cfg):
     # set multi-process start method as `fork` to speed up the training
@@ -49,3 +49,39 @@ def ntuple(n):
         return tuple(repeat(x, n))
 
     return parse
+
+def compute_mean_covariance_torch(input_samples):
+    """
+    Function for efficient computation of mean and covariance matrix in pytorch.
+
+    Args:
+        input_samples(list): list of tensors from M stochastic monte-carlo sampling runs, each containing N x k tensors.
+
+    Returns:
+        predicted_mean(Tensor): an Nxk tensor containing the predicted mean.
+        predicted_covariance(Tensor): an Nxkxk tensor containing the predicted covariance matrix.
+
+    """
+    if isinstance(input_samples, torch.Tensor):
+        num_samples = input_samples.shape[2]
+    else:
+        num_samples = len(input_samples)
+        input_samples = torch.stack(input_samples, 2)
+
+    # Compute Mean
+    predicted_mean = torch.mean(input_samples, 2, keepdim=True)
+
+    # Compute Covariance
+    residuals = torch.transpose(
+        torch.unsqueeze(
+            input_samples -
+            predicted_mean,
+            1),
+        1,
+        3)
+    predicted_covariance = torch.matmul(
+        residuals, torch.transpose(residuals, 3, 2))
+    predicted_covariance = torch.sum(
+        predicted_covariance, 1) / (num_samples - 1)
+
+    return predicted_mean.squeeze(2), predicted_covariance
