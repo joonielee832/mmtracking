@@ -21,7 +21,7 @@ then
 else
     python tools/test.py $CONFIG \
     $ARGS \
-    --gpu-id 0
+    --gpu-id 1
 fi
 
 # [ -d $EVAL_DIR ] && rm -rf $EVAL_DIR

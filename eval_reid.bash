@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-NUM_GPUS=$1
-EXP_DIR=prob_reid_mot17_train_exp18
-CONFIG=configs/reid/prob_MOT17_attenuated/exp18.py
+GPU=$1
+EXP_DIR=prob_reid_mot17_train_exp41
+# CONFIG=configs/reid/prob_MOT17_attenuated/exp41.py
+CONFIG=/home/results/$EXP_DIR/exp41.py
 OUTPUT=/home/results
 
 #? Direct eval in test.py
@@ -16,11 +17,6 @@ ARGS="--work-dir $RESULTS_DIR/eval \
 --eval mAP"
 
 [ -d $EVAL_DIR ] && rm -rf $EVAL_DIR
-if [[ $NUM_GPUS -gt 1 ]]
-then
-    bash tools/dist_test.sh $CONFIG $NUM_GPUS $ARGS
-else
-    python tools/test.py $CONFIG \
+python tools/test.py $CONFIG \
     $ARGS \
-    --gpu-id 0
-fi
+    --gpu-id $GPU

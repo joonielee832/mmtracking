@@ -4,7 +4,7 @@ NUM_GPUS=$1
 CONFIG=$2
 OUTPUT=$3
 
-# [ -d $OUTPUT ] && rm -rf $OUTPUT
+[ -d $OUTPUT ] && rm -rf $OUTPUT
 [ -f "${OUTPUT}/latest.pth" ] && CONFIG+="_resume"
 CONFIG+=".py"
 echo "CONFIG... $CONFIG"
@@ -18,5 +18,5 @@ then
 else
     python ./tools/train.py $CONFIG \
     $ARGS \
-    --gpu-id 0
+    --gpu-id 1
 fi
