@@ -16,11 +16,5 @@ ARGS="--work-dir $RESULTS_DIR/eval \
 --eval bbox"
 
 [ -d $EVAL_DIR ] && rm -rf $EVAL_DIR
-if [[ $NUM_GPUS -gt 1 ]]
-then
-    bash tools/dist_test.sh $CONFIG $NUM_GPUS $ARGS
-else
-    python tools/test.py $CONFIG \
-    $ARGS \
-    --gpu-id 1
-fi
+python3 tools/test.py $CONFIG \
+    $ARGS

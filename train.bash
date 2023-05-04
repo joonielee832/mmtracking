@@ -18,5 +18,5 @@ then
 else
     python ./tools/train.py $CONFIG \
     $ARGS \
-    --gpu-id 1
+    --gpu-id 0
 fi
